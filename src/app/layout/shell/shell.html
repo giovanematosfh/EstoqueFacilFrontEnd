@@ -1,0 +1,13 @@
+<div class="shell" [class.collapsed]="collapsed()">
+  <app-sidebar [collapsed]="collapsed()" (navigate)="onNavigate()" />
+
+  <div class="backdrop" (click)="collapsed.set(true)"></div>
+
+  <div class="shell-main">
+    <app-topbar (toggleSidebar)="toggleSidebar()" />
+
+    <main class="shell-content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

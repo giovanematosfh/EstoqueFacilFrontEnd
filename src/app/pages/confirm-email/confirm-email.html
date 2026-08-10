@@ -1,0 +1,33 @@
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-brand">
+      <span class="brand-mark">EF</span>
+      <span class="brand-name">Estoque Fácil</span>
+    </div>
+
+    @switch (state()) {
+      @case ('loading') {
+        <div class="confirm-panel">
+          <app-icon name="mail" [size]="40" />
+          <p>Confirmando seu e-mail...</p>
+        </div>
+      }
+      @case ('success') {
+        <div class="confirm-panel">
+          <app-icon name="mail" [size]="40" />
+          <h2>E-mail confirmado!</h2>
+          <p>Sua conta foi ativada com sucesso. Agora você já pode entrar.</p>
+          <a class="btn btn-primary login-submit" routerLink="/login">Ir para o login</a>
+        </div>
+      }
+      @case ('error') {
+        <div class="confirm-panel">
+          <app-icon name="lock" [size]="40" />
+          <h2>Não foi possível confirmar</h2>
+          <p>{{ errorMessage() }}</p>
+          <a class="btn btn-primary login-submit" routerLink="/login">Voltar para o login</a>
+        </div>
+      }
+    }
+  </div>
+</div>

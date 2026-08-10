@@ -1,0 +1,107 @@
+<div class="page">
+  <div class="page-toolbar">
+    <header class="page-header">
+      <h1>Fornecedores</h1>
+      <p>Cadastre e gerencie os fornecedores dos seus produtos.</p>
+    </header>
+    <button class="btn btn-primary" type="button" (click)="openCreateForm()">
+      <app-icon name="plus" [size]="16" />
+      Novo Fornecedor
+    </button>
+  </div>
+
+  @if (showForm()) {
+    <div class="card form-card">
+      <h2>{{ editingId() ? 'Editar Fornecedor' : 'Novo Fornecedor' }}</h2>
+      <form [formGroup]="form" (ngSubmit)="submitForm()">
+        <div class="form-grid">
+          <div class="field">
+            <label for="name">Nome</label>
+            <input id="name" type="text" formControlName="name" />
+            @if (form.controls.name.invalid && form.controls.name.touched) {
+              <span class="field-error">Informe o nome do fornecedor.</span>
+            }
+          </div>
+
+          <div class="field">
+            <label for="document">CNPJ/CPF</label>
+            <input id="document" type="text" formControlName="document" />
+          </div>
+
+          <div class="field">
+            <label for="email">E-mail</label>
+            <input id="email" type="email" formControlName="email" />
+            @if (form.controls.email.invalid && form.controls.email.touched) {
+              <span class="field-error">Informe um e-mail válido.</span>
+            }
+          </div>
+
+          <div class="field">
+            <label for="phone">Telefone</label>
+            <input id="phone" type="text" formControlName="phone" />
+          </div>
+
+          <div class="field full-width">
+            <label for="address">Endereço</label>
+            <input id="address" type="text" formControlName="address" />
+          </div>
+        </div>
+
+        @if (formError()) {
+          <div class="alert-error">{{ formError() }}</div>
+        }
+
+        <div class="form-actions">
+          <button class="btn btn-secondary" type="button" (click)="closeForm()">Cancelar</button>
+          <button class="btn btn-primary" type="submit" [disabled]="saving()">
+            {{ saving() ? 'Salvando...' : 'Salvar' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="card"><p class="loading-text">Carregando fornecedores...</p></div>
+  } @else if (suppliers().length === 0) {
+    <app-empty-state
+      icon="fornecedores"
+      title="Nenhum fornecedor cadastrado"
+      description="Clique em Novo Fornecedor para cadastrar o primeiro."
+    />
+  } @else {
+    <div class="card">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>CNPJ/CPF</th>
+            <th>E-mail</th>
+            <th>Telefone</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (supplier of suppliers(); track supplier.id) {
+            <tr>
+              <td>{{ supplier.name }}</td>
+              <td>{{ supplier.document }}</td>
+              <td>{{ supplier.email }}</td>
+              <td>{{ supplier.phone }}</td>
+              <td>
+                <div class="table-actions">
+                  <button class="icon-btn" type="button" (click)="openEditForm(supplier)" aria-label="Editar fornecedor">
+                    <app-icon name="edit" [size]="18" />
+                  </button>
+                  <button class="icon-btn" type="button" (click)="deleteSupplier(supplier)" aria-label="Excluir fornecedor">
+                    <app-icon name="delete" [size]="18" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

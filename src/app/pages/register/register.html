@@ -1,0 +1,96 @@
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-brand">
+      <span class="brand-mark">EF</span>
+      <span class="brand-name">Estoque Fácil</span>
+    </div>
+
+    @if (registered()) {
+      <div class="confirm-panel">
+        <app-icon name="mail" [size]="40" />
+        <h2>Confirme seu e-mail</h2>
+        <p>Enviamos um link de confirmação para o e-mail informado. Abra sua caixa de entrada e clique no link para ativar sua conta.</p>
+        <a class="btn btn-primary login-submit" routerLink="/login">Ir para o login</a>
+      </div>
+    } @else {
+      <p class="login-subtitle">Crie sua conta para acessar o sistema.</p>
+
+      <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
+      <div class="field">
+        <label for="fullName">Nome completo</label>
+        <input
+          id="fullName"
+          type="text"
+          formControlName="fullName"
+          placeholder="Seu nome"
+          autocomplete="name"
+          [class.invalid]="form.controls.fullName.invalid && form.controls.fullName.touched"
+        />
+        @if (form.controls.fullName.invalid && form.controls.fullName.touched) {
+          <span class="field-error">Informe seu nome.</span>
+        }
+      </div>
+
+      <div class="field">
+        <label for="email">E-mail</label>
+        <input
+          id="email"
+          type="email"
+          formControlName="email"
+          placeholder="seu@email.com"
+          autocomplete="email"
+          [class.invalid]="form.controls.email.invalid && form.controls.email.touched"
+        />
+        @if (form.controls.email.invalid && form.controls.email.touched) {
+          <span class="field-error">Informe um e-mail válido.</span>
+        }
+      </div>
+
+      <div class="field">
+        <label for="password">Senha</label>
+        <input
+          id="password"
+          type="password"
+          formControlName="password"
+          placeholder="Mínimo 6 caracteres"
+          autocomplete="new-password"
+          [class.invalid]="form.controls.password.invalid && form.controls.password.touched"
+        />
+        @if (form.controls.password.invalid && form.controls.password.touched) {
+          <span class="field-error">A senha deve ter ao menos 6 caracteres.</span>
+        }
+      </div>
+
+      <div class="field">
+        <label for="confirmPassword">Confirmar senha</label>
+        <input
+          id="confirmPassword"
+          type="password"
+          formControlName="confirmPassword"
+          placeholder="Repita a senha"
+          autocomplete="new-password"
+          [class.invalid]="form.controls.confirmPassword.touched && form.errors?.['passwordsMismatch']"
+        />
+        @if (form.controls.confirmPassword.touched && form.errors?.['passwordsMismatch']) {
+          <span class="field-error">As senhas não coincidem.</span>
+        }
+      </div>
+
+      @if (errorMessage()) {
+        <div class="alert-error">
+          <app-icon name="lock" [size]="16" />
+          <span>{{ errorMessage() }}</span>
+        </div>
+      }
+
+      <button class="btn btn-primary login-submit" type="submit" [disabled]="submitting()">
+        {{ submitting() ? 'Criando conta...' : 'Criar conta' }}
+      </button>
+
+      <p class="login-footer">
+        Já tem uma conta? <a routerLink="/login">Entrar</a>
+      </p>
+      </form>
+    }
+  </div>
+</div>

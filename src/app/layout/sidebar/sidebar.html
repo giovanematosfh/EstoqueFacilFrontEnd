@@ -1,0 +1,19 @@
+<aside class="sidebar" [class.collapsed]="collapsed()">
+  <div class="sidebar-brand">
+    <span class="brand-mark">EF</span>
+    @if (!collapsed()) {
+      <span class="brand-name">Estoque Fácil</span>
+    }
+  </div>
+
+  <nav class="sidebar-nav">
+    @for (item of menuItems; track item.route) {
+      <a class="nav-item" [routerLink]="item.route" routerLinkActive="active" (click)="navigate.emit()">
+        <app-icon [name]="item.icon" [size]="20" />
+        @if (!collapsed()) {
+          <span class="nav-label">{{ item.label }}</span>
+        }
+      </a>
+    }
+  </nav>
+</aside>

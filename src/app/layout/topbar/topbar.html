@@ -1,0 +1,19 @@
+<header class="topbar">
+  <button class="icon-btn" type="button" (click)="toggleSidebar.emit()" aria-label="Alternar menu">
+    <app-icon name="menu" [size]="22" />
+  </button>
+
+  <h1 class="page-title">{{ pageTitle() }}</h1>
+
+  <div class="topbar-spacer"></div>
+
+  <div class="user-menu">
+    <div class="user-avatar">
+      <app-icon name="user" [size]="18" />
+    </div>
+    <span class="user-name">{{ userName()?.name }}</span>
+    <button class="icon-btn" type="button" (click)="logout()" aria-label="Sair" title="Sair">
+      <app-icon name="logout" [size]="20" />
+    </button>
+  </div>
+</header>

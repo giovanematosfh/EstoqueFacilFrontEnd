@@ -1,0 +1,9 @@
+<div class="empty-state">
+  <div class="empty-icon">
+    <app-icon [name]="icon()" [size]="32" />
+  </div>
+  <h3>{{ title() }}</h3>
+  @if (description()) {
+    <p>{{ description() }}</p>
+  }
+</div>

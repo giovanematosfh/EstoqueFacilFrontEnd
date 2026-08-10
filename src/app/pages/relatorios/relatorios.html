@@ -1,0 +1,195 @@
+<div class="page">
+  <header class="page-header">
+    <h1>Relatórios</h1>
+    <p>Gere relatórios de estoque e exporte em Excel ou PDF.</p>
+  </header>
+
+  <div class="report-tabs">
+    <button
+      class="report-tab"
+      type="button"
+      [class.active]="activeReport() === 'lowStock'"
+      (click)="selectReport('lowStock')"
+    >
+      Estoque Baixo
+    </button>
+    <button
+      class="report-tab"
+      type="button"
+      [class.active]="activeReport() === 'inventory'"
+      (click)="selectReport('inventory')"
+    >
+      Quantidade em Estoque
+    </button>
+    <button
+      class="report-tab"
+      type="button"
+      [class.active]="activeReport() === 'movements'"
+      (click)="selectReport('movements')"
+    >
+      Movimentações por Período
+    </button>
+  </div>
+
+  @if (activeReport() === 'movements') {
+    <div class="card form-card">
+      <form [formGroup]="dateForm" (ngSubmit)="generateMovementsReport()">
+        <div class="form-grid">
+          <div class="field">
+            <label for="from">De</label>
+            <input id="from" type="date" formControlName="from" />
+          </div>
+          <div class="field">
+            <label for="to">Até</label>
+            <input id="to" type="date" formControlName="to" />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">Gerar</button>
+        </div>
+      </form>
+    </div>
+  }
+
+  <div class="page-toolbar">
+    <span class="report-count">
+      @switch (activeReport()) {
+        @case ('lowStock') {
+          {{ lowStockProducts().length }} produto(s) com estoque baixo
+        }
+        @case ('inventory') {
+          {{ inventoryProducts().length }} produto(s) no estoque
+        }
+        @case ('movements') {
+          {{ movements().length }} movimentação(ões) no período
+        }
+      }
+    </span>
+    <div class="table-actions">
+      <button class="btn btn-secondary" type="button" [disabled]="!hasData()" (click)="exportExcel()">
+        <app-icon name="download" [size]="16" />
+        Exportar Excel
+      </button>
+      <button class="btn btn-secondary" type="button" [disabled]="!hasData()" (click)="exportPdf()">
+        <app-icon name="download" [size]="16" />
+        Exportar PDF
+      </button>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="card"><p class="loading-text">Gerando relatório...</p></div>
+  } @else if (activeReport() === 'lowStock') {
+    @if (lowStockProducts().length === 0) {
+      <app-empty-state
+        icon="estoque"
+        title="Nenhum produto com estoque baixo"
+        description="Todos os produtos estão com estoque acima do mínimo cadastrado."
+      />
+    } @else {
+      <div class="card">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>SKU</th>
+              <th>Categoria</th>
+              <th>Preço</th>
+              <th>Estoque</th>
+              <th>Mínimo</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (product of lowStockProducts(); track product.id) {
+              <tr>
+                <td>{{ product.name }}</td>
+                <td>{{ product.sku }}</td>
+                <td>{{ product.categoryName }}</td>
+                <td>{{ product.price | currency: 'BRL' }}</td>
+                <td>
+                  {{ product.stockQuantity }}
+                  <span class="badge badge-out">baixo</span>
+                </td>
+                <td>{{ product.minimumStockQuantity }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  } @else if (activeReport() === 'inventory') {
+    @if (inventoryProducts().length === 0) {
+      <app-empty-state icon="produtos" title="Nenhum produto cadastrado" description="Cadastre produtos para ver o relatório de estoque." />
+    } @else {
+      <div class="card">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>SKU</th>
+              <th>Categoria</th>
+              <th>Preço</th>
+              <th>Estoque</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (product of inventoryProducts(); track product.id) {
+              <tr>
+                <td>{{ product.name }}</td>
+                <td>{{ product.sku }}</td>
+                <td>{{ product.categoryName }}</td>
+                <td>{{ product.price | currency: 'BRL' }}</td>
+                <td>{{ product.stockQuantity }}</td>
+                <td>
+                  <span class="badge" [class.badge-in]="product.active" [class.badge-out]="!product.active">
+                    {{ product.active ? 'Ativo' : 'Inativo' }}
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  } @else {
+    @if (movements().length === 0) {
+      <app-empty-state
+        icon="estoque"
+        title="Nenhuma movimentação no período"
+        description="Ajuste o período acima e clique em Gerar."
+      />
+    } @else {
+      <div class="card">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th>Tipo</th>
+              <th>Quantidade</th>
+              <th>Motivo</th>
+              <th>Data</th>
+              <th>Saldo</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (movement of movements(); track movement.id) {
+              <tr>
+                <td>{{ movement.productName }}</td>
+                <td>
+                  <span class="badge" [class.badge-in]="movement.type === 'Inbound'" [class.badge-out]="movement.type === 'Outbound'">
+                    {{ movement.type === 'Inbound' ? 'Entrada' : 'Saída' }}
+                  </span>
+                </td>
+                <td>{{ movement.quantity }}</td>
+                <td>{{ movement.reason }}</td>
+                <td>{{ movement.movementDate | date: 'dd/MM/yyyy HH:mm' }}</td>
+                <td>{{ movement.stockBalanceAfter }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+</div>
