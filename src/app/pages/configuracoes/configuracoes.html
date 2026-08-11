@@ -4,9 +4,118 @@
     <p>Ajuste as preferências do sistema e da sua conta.</p>
   </header>
 
-  <app-empty-state
-    icon="configuracoes"
-    title="Nenhuma configuração disponível"
-    description="Em breve você poderá ajustar as preferências do sistema por aqui."
-  />
+  @if (isAdmin()) {
+    @if (showEditForm()) {
+      <div class="card form-card">
+        <h2>Editar Usuário</h2>
+        <form [formGroup]="form" (ngSubmit)="submitEditForm()">
+          <div class="form-grid">
+            <div class="field">
+              <label for="fullName">Nome</label>
+              <input id="fullName" type="text" formControlName="fullName" />
+              @if (form.controls.fullName.invalid && form.controls.fullName.touched) {
+                <span class="field-error">Informe o nome do usuário.</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="email">E-mail</label>
+              <input id="email" type="email" formControlName="email" />
+              @if (form.controls.email.invalid && form.controls.email.touched) {
+                <span class="field-error">Informe um e-mail válido.</span>
+              }
+            </div>
+          </div>
+
+          @if (formError()) {
+            <div class="alert-error">{{ formError() }}</div>
+          }
+
+          <div class="form-actions">
+            <button class="btn btn-secondary" type="button" (click)="closeEditForm()">Cancelar</button>
+            <button class="btn btn-primary" type="submit" [disabled]="saving()">
+              {{ saving() ? 'Salvando...' : 'Salvar' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    }
+
+    <div class="card">
+      <div class="card-header">
+        <h2>Usuários</h2>
+        <p>Edite, ative/desative ou remova o acesso de usuários ao sistema.</p>
+      </div>
+
+      @if (errorMessage()) {
+        <div class="alert-error">{{ errorMessage() }}</div>
+      }
+
+      @if (loading()) {
+        <p class="loading-text">Carregando usuários...</p>
+      } @else {
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>E-mail</th>
+              <th>Papel</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (user of users(); track user.id) {
+              <tr>
+                <td>{{ user.fullName }}</td>
+                <td>{{ user.email }}</td>
+                <td>
+                  <select
+                    [value]="user.role"
+                    [disabled]="user.id === currentUserId"
+                    (change)="onRoleChange(user, $any($event.target).value)"
+                  >
+                    <option value="User">Usuário</option>
+                    <option value="Admin">Administrador</option>
+                  </select>
+                </td>
+                <td>
+                  <span class="badge" [class.badge-in]="user.isActive" [class.badge-out]="!user.isActive">
+                    {{ user.isActive ? 'Ativo' : 'Inativo' }}
+                  </span>
+                </td>
+                <td>
+                  <div class="table-actions">
+                    <button class="icon-btn" type="button" (click)="openEditForm(user)" aria-label="Editar usuário">
+                      <app-icon name="edit" [size]="18" />
+                    </button>
+                    @if (user.id !== currentUserId) {
+                      <button
+                        class="icon-btn"
+                        type="button"
+                        (click)="toggleStatus(user)"
+                        [attr.aria-label]="user.isActive ? 'Desativar usuário' : 'Ativar usuário'"
+                        [title]="user.isActive ? 'Desativar' : 'Ativar'"
+                      >
+                        <app-icon name="power" [size]="18" />
+                      </button>
+                      <button class="icon-btn" type="button" (click)="deleteUser(user)" aria-label="Excluir usuário">
+                        <app-icon name="delete" [size]="18" />
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  } @else {
+    <app-empty-state
+      icon="configuracoes"
+      title="Nenhuma configuração disponível"
+      description="Em breve você poderá ajustar as preferências do sistema por aqui."
+    />
+  }
 </div>

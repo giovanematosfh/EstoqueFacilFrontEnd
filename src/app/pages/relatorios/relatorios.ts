@@ -1,9 +1,11 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { CurrencyPipe, DatePipe } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { ProductService } from '../../core/services/product.service';
+import { DatePipe } from '@angular/common';
+import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { BranchService } from '../../core/services/branch.service';
+import { ProductStockService } from '../../core/services/product-stock.service';
 import { StockMovementService } from '../../core/services/stock-movement.service';
-import { Product } from '../../core/models/product.model';
+import { Branch } from '../../core/models/branch.model';
+import { ProductStock } from '../../core/models/product-stock.model';
 import { StockMovement } from '../../core/models/stock-movement.model';
 import { EmptyState } from '../../shared/empty-state/empty-state';
 import { Icon } from '../../shared/icon/icon';
@@ -11,28 +13,22 @@ import { ReportColumn, exportToExcel, exportToPdf } from '../../core/utils/expor
 
 type ReportType = 'lowStock' | 'inventory' | 'movements';
 
-const PRODUCT_COLUMNS: ReportColumn<Product>[] = [
-  { header: 'Nome', key: 'name' },
+const PRODUCT_STOCK_COLUMNS: ReportColumn<ProductStock>[] = [
+  { header: 'Nome', key: 'productName' },
   { header: 'SKU', key: 'sku' },
-  { header: 'Categoria', key: 'categoryName' },
-  { header: 'Preço', key: 'price', format: (v) => formatCurrency(v as number) },
-  { header: 'Estoque', key: 'stockQuantity' },
-  { header: 'Mínimo', key: 'minimumStockQuantity' },
-  { header: 'Status', key: 'active', format: (v) => (v ? 'Ativo' : 'Inativo') },
+  { header: 'Quantidade', key: 'quantity' },
+  { header: 'Mínimo', key: 'minimumQuantity' },
 ];
 
 const MOVEMENT_COLUMNS: ReportColumn<StockMovement>[] = [
   { header: 'Produto', key: 'productName' },
+  { header: 'Filial', key: 'branchName' },
   { header: 'Tipo', key: 'type', format: (v) => (v === 'Inbound' ? 'Entrada' : 'Saída') },
   { header: 'Quantidade', key: 'quantity' },
   { header: 'Motivo', key: 'reason' },
   { header: 'Data', key: 'movementDate', format: (v) => formatDateTime(v as string) },
   { header: 'Saldo', key: 'stockBalanceAfter' },
 ];
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value ?? 0);
-}
 
 function formatDateTime(value: string): string {
   return value ? new Date(value).toLocaleString('pt-BR') : '';
@@ -44,19 +40,23 @@ function isoDate(date: Date): string {
 
 @Component({
   selector: 'app-relatorios',
-  imports: [ReactiveFormsModule, CurrencyPipe, DatePipe, EmptyState, Icon],
+  imports: [ReactiveFormsModule, FormsModule, DatePipe, EmptyState, Icon],
   templateUrl: './relatorios.html',
 })
 export class Relatorios implements OnInit {
-  private readonly productService = inject(ProductService);
+  private readonly branchService = inject(BranchService);
+  private readonly productStockService = inject(ProductStockService);
   private readonly stockMovementService = inject(StockMovementService);
   private readonly fb = inject(FormBuilder);
+
+  protected readonly branches = signal<Branch[]>([]);
+  protected readonly selectedBranchId = signal<number | null>(null);
 
   protected readonly activeReport = signal<ReportType>('lowStock');
   protected readonly loading = signal(false);
 
-  protected readonly lowStockProducts = signal<Product[]>([]);
-  protected readonly inventoryProducts = signal<Product[]>([]);
+  protected readonly lowStockItems = signal<ProductStock[]>([]);
+  protected readonly inventoryItems = signal<ProductStock[]>([]);
   protected readonly movements = signal<StockMovement[]>([]);
 
   protected readonly dateForm = this.fb.nonNullable.group({
@@ -65,14 +65,22 @@ export class Relatorios implements OnInit {
   });
 
   ngOnInit(): void {
-    this.loadLowStock();
+    this.loadBranches();
+  }
+
+  protected onBranchChange(branchId: number): void {
+    this.selectedBranchId.set(branchId);
+    this.lowStockItems.set([]);
+    this.inventoryItems.set([]);
+    this.movements.set([]);
+    this.loadForActiveReport();
   }
 
   protected selectReport(type: ReportType): void {
     this.activeReport.set(type);
-    if (type === 'lowStock' && this.lowStockProducts().length === 0) {
+    if (type === 'lowStock' && this.lowStockItems().length === 0) {
       this.loadLowStock();
-    } else if (type === 'inventory' && this.inventoryProducts().length === 0) {
+    } else if (type === 'inventory' && this.inventoryItems().length === 0) {
       this.loadInventory();
     } else if (type === 'movements' && this.movements().length === 0) {
       this.loadMovements();
@@ -86,9 +94,9 @@ export class Relatorios implements OnInit {
   protected hasData(): boolean {
     switch (this.activeReport()) {
       case 'lowStock':
-        return this.lowStockProducts().length > 0;
+        return this.lowStockItems().length > 0;
       case 'inventory':
-        return this.inventoryProducts().length > 0;
+        return this.inventoryItems().length > 0;
       case 'movements':
         return this.movements().length > 0;
     }
@@ -97,10 +105,10 @@ export class Relatorios implements OnInit {
   protected exportExcel(): void {
     switch (this.activeReport()) {
       case 'lowStock':
-        exportToExcel(this.lowStockProducts(), PRODUCT_COLUMNS, 'estoque-baixo');
+        exportToExcel(this.lowStockItems(), PRODUCT_STOCK_COLUMNS, 'estoque-baixo');
         break;
       case 'inventory':
-        exportToExcel(this.inventoryProducts(), PRODUCT_COLUMNS, 'estoque-geral');
+        exportToExcel(this.inventoryItems(), PRODUCT_STOCK_COLUMNS, 'estoque-geral');
         break;
       case 'movements':
         exportToExcel(this.movements(), MOVEMENT_COLUMNS, 'movimentacoes');
@@ -111,10 +119,10 @@ export class Relatorios implements OnInit {
   protected exportPdf(): void {
     switch (this.activeReport()) {
       case 'lowStock':
-        exportToPdf(this.lowStockProducts(), PRODUCT_COLUMNS, 'estoque-baixo', 'Relatório de Estoque Baixo');
+        exportToPdf(this.lowStockItems(), PRODUCT_STOCK_COLUMNS, 'estoque-baixo', 'Relatório de Estoque Baixo');
         break;
       case 'inventory':
-        exportToPdf(this.inventoryProducts(), PRODUCT_COLUMNS, 'estoque-geral', 'Relatório de Estoque Geral');
+        exportToPdf(this.inventoryItems(), PRODUCT_STOCK_COLUMNS, 'estoque-geral', 'Relatório de Estoque Geral');
         break;
       case 'movements':
         exportToPdf(this.movements(), MOVEMENT_COLUMNS, 'movimentacoes', 'Relatório de Movimentações');
@@ -122,11 +130,43 @@ export class Relatorios implements OnInit {
     }
   }
 
+  private loadBranches(): void {
+    this.branchService.getAll('', 1, 100).subscribe({
+      next: (result) => {
+        this.branches.set(result.items);
+        const active = result.items.find((b) => b.active) ?? result.items[0];
+        if (active) {
+          this.selectedBranchId.set(active.id);
+          this.loadForActiveReport();
+        }
+      },
+    });
+  }
+
+  private loadForActiveReport(): void {
+    switch (this.activeReport()) {
+      case 'lowStock':
+        this.loadLowStock();
+        break;
+      case 'inventory':
+        this.loadInventory();
+        break;
+      case 'movements':
+        this.loadMovements();
+        break;
+    }
+  }
+
   private loadLowStock(): void {
+    const branchId = this.selectedBranchId();
+    if (!branchId) {
+      return;
+    }
+
     this.loading.set(true);
-    this.productService.getLowStock().subscribe({
-      next: (products) => {
-        this.lowStockProducts.set(products);
+    this.productStockService.getLowStock(branchId).subscribe({
+      next: (items) => {
+        this.lowStockItems.set(items);
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
@@ -134,10 +174,15 @@ export class Relatorios implements OnInit {
   }
 
   private loadInventory(): void {
+    const branchId = this.selectedBranchId();
+    if (!branchId) {
+      return;
+    }
+
     this.loading.set(true);
-    this.productService.getReport().subscribe({
-      next: (products) => {
-        this.inventoryProducts.set(products);
+    this.productStockService.getReport(branchId).subscribe({
+      next: (items) => {
+        this.inventoryItems.set(items);
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
@@ -147,12 +192,14 @@ export class Relatorios implements OnInit {
   private loadMovements(): void {
     const { from, to } = this.dateForm.getRawValue();
     this.loading.set(true);
-    this.stockMovementService.getReport(`${from}T00:00:00`, `${to}T23:59:59`).subscribe({
-      next: (movements) => {
-        this.movements.set(movements);
-        this.loading.set(false);
-      },
-      error: () => this.loading.set(false),
-    });
+    this.stockMovementService
+      .getReport(`${from}T00:00:00`, `${to}T23:59:59`, this.selectedBranchId() ?? undefined)
+      .subscribe({
+        next: (movements) => {
+          this.movements.set(movements);
+          this.loading.set(false);
+        },
+        error: () => this.loading.set(false),
+      });
   }
 }

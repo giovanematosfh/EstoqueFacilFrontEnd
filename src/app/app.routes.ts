@@ -46,6 +46,11 @@ export const routes: Routes = [
         title: 'Estoque',
       },
       {
+        path: 'filiais',
+        loadComponent: () => import('./pages/filiais/filiais').then((m) => m.Filiais),
+        title: 'Filiais',
+      },
+      {
         path: 'fornecedores',
         loadComponent: () => import('./pages/fornecedores/fornecedores').then((m) => m.Fornecedores),
         title: 'Fornecedores',

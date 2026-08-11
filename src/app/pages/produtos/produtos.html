@@ -62,18 +62,6 @@
             }
           </div>
 
-          @if (!editingId()) {
-            <div class="field">
-              <label for="stockQuantity">Estoque inicial</label>
-              <input id="stockQuantity" type="number" min="0" formControlName="stockQuantity" />
-            </div>
-          }
-
-          <div class="field">
-            <label for="minimumStockQuantity">Estoque mínimo</label>
-            <input id="minimumStockQuantity" type="number" min="0" formControlName="minimumStockQuantity" />
-          </div>
-
           <div class="field full-width">
             <label for="description">Descrição</label>
             <input id="description" type="text" formControlName="description" />
@@ -124,7 +112,6 @@
             <th>SKU</th>
             <th>Categoria</th>
             <th>Preço</th>
-            <th>Estoque</th>
             <th>Status</th>
             <th></th>
           </tr>
@@ -136,12 +123,6 @@
               <td>{{ product.sku }}</td>
               <td>{{ product.categoryName }}</td>
               <td>{{ product.price | currency: 'BRL' }}</td>
-              <td>
-                {{ product.stockQuantity }}
-                @if (product.lowStock) {
-                  <span class="badge badge-out">baixo</span>
-                }
-              </td>
               <td>
                 <span class="badge" [class.badge-in]="product.active" [class.badge-out]="!product.active">
                   {{ product.active ? 'Ativo' : 'Inativo' }}

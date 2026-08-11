@@ -7,6 +7,8 @@ export interface StockMovement {
   id: number;
   productId: number;
   productName?: string | null;
+  branchId: number;
+  branchName: string;
   type: string;
   quantity: number;
   reason?: string | null;
@@ -16,6 +18,7 @@ export interface StockMovement {
 
 export interface CreateStockMovement {
   productId: number;
+  branchId: number;
   type: MovementType;
   quantity: number;
   reason?: string | null;
