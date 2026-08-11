@@ -53,8 +53,6 @@ export class Produtos implements OnInit {
     sku: ['', [Validators.required, Validators.maxLength(50)]],
     categoryId: this.fb.control<number | null>(null, Validators.required),
     price: [0, [Validators.required, Validators.min(0.01)]],
-    stockQuantity: [0, [Validators.required, Validators.min(0)]],
-    minimumStockQuantity: [0, [Validators.required, Validators.min(0)]],
     active: [true],
   });
 
@@ -72,8 +70,6 @@ export class Produtos implements OnInit {
       sku: '',
       categoryId: null,
       price: 0,
-      stockQuantity: 0,
-      minimumStockQuantity: 0,
       active: true,
     });
     this.showForm.set(true);
@@ -88,8 +84,6 @@ export class Produtos implements OnInit {
       sku: product.sku,
       categoryId: product.categoryId,
       price: product.price,
-      stockQuantity: product.stockQuantity,
-      minimumStockQuantity: product.minimumStockQuantity,
       active: product.active,
     });
     this.showForm.set(true);
@@ -173,8 +167,6 @@ export class Produtos implements OnInit {
       description: raw.description || null,
       sku: raw.sku,
       price: raw.price,
-      stockQuantity: raw.stockQuantity,
-      minimumStockQuantity: raw.minimumStockQuantity,
       categoryId: raw.categoryId!,
     };
   }
@@ -184,7 +176,6 @@ export class Produtos implements OnInit {
       name: raw.name,
       description: raw.description || null,
       price: raw.price,
-      minimumStockQuantity: raw.minimumStockQuantity,
       active: raw.active,
       categoryId: raw.categoryId!,
     };

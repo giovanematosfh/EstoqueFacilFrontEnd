@@ -2,128 +2,247 @@
   <div class="page-toolbar">
     <header class="page-header">
       <h1>Estoque</h1>
-      <p>Acompanhe entradas, saídas e o saldo atual do seu estoque.</p>
+      <p>Acompanhe entradas, saídas e o saldo atual do estoque por filial.</p>
     </header>
-    <button class="btn btn-primary" type="button" (click)="openForm()">
+    <button class="btn btn-primary" type="button" [disabled]="!selectedBranchId()" (click)="openForm()">
       <app-icon name="plus" [size]="16" />
       Registrar Movimentação
     </button>
   </div>
 
-  <div class="search-bar">
-    <app-icon name="search" [size]="16" />
-    <input
-      type="text"
-      placeholder="Buscar por produto ou motivo..."
-      [value]="searchTerm()"
-      (input)="onSearchInput($any($event.target).value)"
-    />
+  <div class="branch-selector">
+    <label for="branchSelect">Filial</label>
+    <select
+      id="branchSelect"
+      [ngModel]="selectedBranchId()"
+      (ngModelChange)="onBranchChange($event)"
+      [disabled]="branches().length === 0"
+    >
+      @for (branch of branches(); track branch.id) {
+        <option [ngValue]="branch.id">{{ branch.name }}</option>
+      }
+    </select>
   </div>
 
-  @if (showForm()) {
-    <div class="card form-card">
-      <h2>Registrar Movimentação</h2>
-      <form [formGroup]="form" (ngSubmit)="submitForm()">
-        <div class="form-grid">
-          <div class="field">
-            <label for="productId">Produto</label>
-            <select id="productId" formControlName="productId">
-              <option [ngValue]="null" disabled>Selecione um produto</option>
-              @for (product of products(); track product.id) {
-                <option [ngValue]="product.id">{{ product.name }} (estoque: {{ product.stockQuantity }})</option>
-              }
-            </select>
-            @if (form.controls.productId.invalid && form.controls.productId.touched) {
-              <span class="field-error">Selecione um produto.</span>
-            }
-          </div>
-
-          <div class="field">
-            <label for="type">Tipo</label>
-            <select id="type" formControlName="type">
-              <option [ngValue]="MovementType.Inbound">Entrada</option>
-              <option [ngValue]="MovementType.Outbound">Saída</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label for="quantity">Quantidade</label>
-            <input id="quantity" type="number" min="1" formControlName="quantity" />
-            @if (form.controls.quantity.invalid && form.controls.quantity.touched) {
-              <span class="field-error">Informe uma quantidade válida.</span>
-            }
-          </div>
-
-          <div class="field full-width">
-            <label for="reason">Motivo</label>
-            <input id="reason" type="text" formControlName="reason" placeholder="Opcional" />
-          </div>
-        </div>
-
-        @if (formError()) {
-          <div class="alert-error">{{ formError() }}</div>
-        }
-
-        <div class="form-actions">
-          <button class="btn btn-secondary" type="button" (click)="closeForm()">Cancelar</button>
-          <button class="btn btn-primary" type="submit" [disabled]="saving()">
-            {{ saving() ? 'Registrando...' : 'Registrar' }}
-          </button>
-        </div>
-      </form>
-    </div>
-  }
-
-  @if (loading()) {
-    <div class="card"><p class="loading-text">Carregando movimentações...</p></div>
-  } @else if (movements().length === 0 && searchTerm()) {
+  @if (branches().length === 0) {
     <app-empty-state
-      icon="estoque"
-      title="Nenhuma movimentação encontrada"
-      [description]="'Não encontramos movimentações para \'' + searchTerm() + '\'.'"
-    />
-  } @else if (movements().length === 0) {
-    <app-empty-state
-      icon="estoque"
-      title="Nenhuma movimentação registrada"
-      description="Clique em Registrar Movimentação para lançar uma entrada ou saída de estoque."
+      icon="building"
+      title="Nenhuma filial cadastrada"
+      description="Cadastre uma filial em Filiais para começar a controlar o estoque."
     />
   } @else {
-    <div class="card">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Produto</th>
-            <th>Tipo</th>
-            <th>Quantidade</th>
-            <th>Motivo</th>
-            <th>Data</th>
-            <th>Saldo</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (movement of movements(); track movement.id) {
-            <tr>
-              <td>{{ movement.productName }}</td>
-              <td>
-                <span class="badge" [class.badge-in]="movement.type === 'Inbound'" [class.badge-out]="movement.type === 'Outbound'">
-                  {{ movement.type === 'Inbound' ? 'Entrada' : 'Saída' }}
-                </span>
-              </td>
-              <td>{{ movement.quantity }}</td>
-              <td>{{ movement.reason }}</td>
-              <td>{{ movement.movementDate | date: 'dd/MM/yyyy HH:mm' }}</td>
-              <td>{{ movement.stockBalanceAfter }}</td>
-            </tr>
+    @if (showForm()) {
+      <div class="card form-card">
+        <h2>Registrar Movimentação</h2>
+        <form [formGroup]="form" (ngSubmit)="submitForm()">
+          <div class="form-grid">
+            <div class="field">
+              <label for="productId">Produto</label>
+              <select id="productId" formControlName="productId">
+                <option [ngValue]="null" disabled>Selecione um produto</option>
+                @for (ps of branchProductStocks(); track ps.productId) {
+                  <option [ngValue]="ps.productId">{{ ps.productName }} (estoque: {{ ps.quantity }})</option>
+                }
+              </select>
+              @if (form.controls.productId.invalid && form.controls.productId.touched) {
+                <span class="field-error">Selecione um produto.</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="type">Tipo</label>
+              <select id="type" formControlName="type">
+                <option [ngValue]="MovementType.Inbound">Entrada</option>
+                <option [ngValue]="MovementType.Outbound">Saída</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="quantity">Quantidade</label>
+              <input id="quantity" type="number" min="1" formControlName="quantity" />
+              @if (form.controls.quantity.invalid && form.controls.quantity.touched) {
+                <span class="field-error">Informe uma quantidade válida.</span>
+              }
+            </div>
+
+            <div class="field full-width">
+              <label for="reason">Motivo</label>
+              <input id="reason" type="text" formControlName="reason" placeholder="Opcional" />
+            </div>
+          </div>
+
+          @if (formError()) {
+            <div class="alert-error">{{ formError() }}</div>
           }
-        </tbody>
-      </table>
-      <app-pagination
-        [page]="page()"
-        [totalPages]="totalPages()"
-        [totalCount]="totalCount()"
-        (pageChange)="onPageChange($event)"
-      />
+
+          <div class="form-actions">
+            <button class="btn btn-secondary" type="button" (click)="closeForm()">Cancelar</button>
+            <button class="btn btn-primary" type="submit" [disabled]="saving()">
+              {{ saving() ? 'Registrando...' : 'Registrar' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    }
+
+    <div class="report-tabs">
+      <button
+        class="report-tab"
+        type="button"
+        [class.active]="activeTab() === 'movements'"
+        (click)="selectTab('movements')"
+      >
+        Movimentações
+      </button>
+      <button
+        class="report-tab"
+        type="button"
+        [class.active]="activeTab() === 'levels'"
+        (click)="selectTab('levels')"
+      >
+        Níveis de Estoque
+      </button>
     </div>
+
+    @if (activeTab() === 'movements') {
+      <div class="search-bar">
+        <app-icon name="search" [size]="16" />
+        <input
+          type="text"
+          placeholder="Buscar por produto ou motivo..."
+          [value]="movementSearchTerm()"
+          (input)="onMovementSearchInput($any($event.target).value)"
+        />
+      </div>
+
+      @if (movementsLoading()) {
+        <div class="card"><p class="loading-text">Carregando movimentações...</p></div>
+      } @else if (movements().length === 0 && movementSearchTerm()) {
+        <app-empty-state
+          icon="estoque"
+          title="Nenhuma movimentação encontrada"
+          [description]="'Não encontramos movimentações para \'' + movementSearchTerm() + '\'.'"
+        />
+      } @else if (movements().length === 0) {
+        <app-empty-state
+          icon="estoque"
+          title="Nenhuma movimentação registrada"
+          description="Clique em Registrar Movimentação para lançar uma entrada ou saída de estoque."
+        />
+      } @else {
+        <div class="card">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Produto</th>
+                <th>Tipo</th>
+                <th>Quantidade</th>
+                <th>Motivo</th>
+                <th>Data</th>
+                <th>Saldo</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (movement of movements(); track movement.id) {
+                <tr>
+                  <td>{{ movement.productName }}</td>
+                  <td>
+                    <span
+                      class="badge"
+                      [class.badge-in]="movement.type === 'Inbound'"
+                      [class.badge-out]="movement.type === 'Outbound'"
+                    >
+                      {{ movement.type === 'Inbound' ? 'Entrada' : 'Saída' }}
+                    </span>
+                  </td>
+                  <td>{{ movement.quantity }}</td>
+                  <td>{{ movement.reason }}</td>
+                  <td>{{ movement.movementDate | date: 'dd/MM/yyyy HH:mm' }}</td>
+                  <td>{{ movement.stockBalanceAfter }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          <app-pagination
+            [page]="movementPage()"
+            [totalPages]="movementTotalPages()"
+            [totalCount]="movementTotalCount()"
+            (pageChange)="onMovementPageChange($event)"
+          />
+        </div>
+      }
+    } @else {
+      <div class="search-bar">
+        <app-icon name="search" [size]="16" />
+        <input
+          type="text"
+          placeholder="Buscar por produto ou SKU..."
+          [value]="levelSearchTerm()"
+          (input)="onLevelSearchInput($any($event.target).value)"
+        />
+      </div>
+
+      @if (levelsLoading()) {
+        <div class="card"><p class="loading-text">Carregando níveis de estoque...</p></div>
+      } @else if (levels().length === 0 && levelSearchTerm()) {
+        <app-empty-state
+          icon="estoque"
+          title="Nenhum produto encontrado"
+          [description]="'Não encontramos produtos para \'' + levelSearchTerm() + '\'.'"
+        />
+      } @else if (levels().length === 0) {
+        <app-empty-state
+          icon="produtos"
+          title="Nenhum produto cadastrado"
+          description="Cadastre produtos para ver os níveis de estoque desta filial."
+        />
+      } @else {
+        <div class="card">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Produto</th>
+                <th>SKU</th>
+                <th>Quantidade</th>
+                <th>Mínimo</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (ps of levels(); track ps.productId) {
+                <tr>
+                  <td>{{ ps.productName }}</td>
+                  <td>{{ ps.sku }}</td>
+                  <td>{{ ps.quantity }}</td>
+                  <td>
+                    <input
+                      type="number"
+                      min="0"
+                      class="inline-number-input"
+                      [value]="ps.minimumQuantity"
+                      [disabled]="savingMinimumFor() === ps.productId"
+                      (change)="updateMinimum(ps, $any($event.target).value)"
+                    />
+                  </td>
+                  <td>
+                    @if (ps.lowStock) {
+                      <span class="badge badge-out">baixo</span>
+                    } @else {
+                      <span class="badge badge-in">ok</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          <app-pagination
+            [page]="levelPage()"
+            [totalPages]="levelTotalPages()"
+            [totalCount]="levelTotalCount()"
+            (pageChange)="onLevelPageChange($event)"
+          />
+        </div>
+      }
+    }
   }
 </div>

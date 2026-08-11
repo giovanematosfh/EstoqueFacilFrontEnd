@@ -18,14 +18,6 @@ export class ProductService {
     return this.http.get<PagedResult<Product>>(this.baseUrl, { params });
   }
 
-  getLowStock(): Observable<Product[]> {
-    return this.http.get<Product[]>(`${this.baseUrl}/low-stock`);
-  }
-
-  getReport(): Observable<Product[]> {
-    return this.http.get<Product[]>(`${this.baseUrl}/report`);
-  }
-
   getById(id: number): Observable<Product> {
     return this.http.get<Product>(`${this.baseUrl}/${id}`);
   }

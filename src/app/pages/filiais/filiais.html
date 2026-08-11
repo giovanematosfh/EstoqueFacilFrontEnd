@@ -1,12 +1,12 @@
 <div class="page">
   <div class="page-toolbar">
     <header class="page-header">
-      <h1>Fornecedores</h1>
-      <p>Cadastre e gerencie os fornecedores dos seus produtos.</p>
+      <h1>Filiais</h1>
+      <p>Cadastre as unidades da empresa para controlar o estoque de cada uma.</p>
     </header>
     <button class="btn btn-primary" type="button" (click)="openCreateForm()">
       <app-icon name="plus" [size]="16" />
-      Novo Fornecedor
+      Nova Filial
     </button>
   </div>
 
@@ -14,7 +14,7 @@
     <app-icon name="search" [size]="16" />
     <input
       type="text"
-      placeholder="Buscar por nome, CNPJ/CPF ou e-mail..."
+      placeholder="Buscar por nome..."
       [value]="searchTerm()"
       (input)="onSearchInput($any($event.target).value)"
     />
@@ -22,39 +22,28 @@
 
   @if (showForm()) {
     <div class="card form-card">
-      <h2>{{ editingId() ? 'Editar Fornecedor' : 'Novo Fornecedor' }}</h2>
+      <h2>{{ editingId() ? 'Editar Filial' : 'Nova Filial' }}</h2>
       <form [formGroup]="form" (ngSubmit)="submitForm()">
         <div class="form-grid">
           <div class="field">
             <label for="name">Nome</label>
             <input id="name" type="text" formControlName="name" />
             @if (form.controls.name.invalid && form.controls.name.touched) {
-              <span class="field-error">Informe o nome do fornecedor.</span>
+              <span class="field-error">Informe o nome da filial.</span>
             }
-          </div>
-
-          <div class="field">
-            <label for="document">CNPJ/CPF</label>
-            <input id="document" type="text" formControlName="document" />
-          </div>
-
-          <div class="field">
-            <label for="email">E-mail</label>
-            <input id="email" type="email" formControlName="email" />
-            @if (form.controls.email.invalid && form.controls.email.touched) {
-              <span class="field-error">Informe um e-mail válido.</span>
-            }
-          </div>
-
-          <div class="field">
-            <label for="phone">Telefone</label>
-            <input id="phone" type="text" formControlName="phone" />
           </div>
 
           <div class="field full-width">
             <label for="address">Endereço</label>
             <input id="address" type="text" formControlName="address" />
           </div>
+
+          @if (editingId()) {
+            <label class="checkbox-field">
+              <input type="checkbox" formControlName="active" />
+              Filial ativa
+            </label>
+          }
         </div>
 
         @if (formError()) {
@@ -72,18 +61,18 @@
   }
 
   @if (loading()) {
-    <div class="card"><p class="loading-text">Carregando fornecedores...</p></div>
-  } @else if (suppliers().length === 0 && searchTerm()) {
+    <div class="card"><p class="loading-text">Carregando filiais...</p></div>
+  } @else if (branches().length === 0 && searchTerm()) {
     <app-empty-state
-      icon="fornecedores"
-      title="Nenhum fornecedor encontrado"
-      [description]="'Não encontramos fornecedores para \'' + searchTerm() + '\'.'"
+      icon="building"
+      title="Nenhuma filial encontrada"
+      [description]="'Não encontramos filiais para \'' + searchTerm() + '\'.'"
     />
-  } @else if (suppliers().length === 0) {
+  } @else if (branches().length === 0) {
     <app-empty-state
-      icon="fornecedores"
-      title="Nenhum fornecedor cadastrado"
-      description="Clique em Novo Fornecedor para cadastrar o primeiro."
+      icon="building"
+      title="Nenhuma filial cadastrada"
+      description="Clique em Nova Filial para começar a controlar o estoque por unidade."
     />
   } @else {
     <div class="card">
@@ -91,25 +80,27 @@
         <thead>
           <tr>
             <th>Nome</th>
-            <th>CNPJ/CPF</th>
-            <th>E-mail</th>
-            <th>Telefone</th>
+            <th>Endereço</th>
+            <th>Status</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
-          @for (supplier of suppliers(); track supplier.id) {
+          @for (branch of branches(); track branch.id) {
             <tr>
-              <td>{{ supplier.name }}</td>
-              <td>{{ supplier.document }}</td>
-              <td>{{ supplier.email }}</td>
-              <td>{{ supplier.phone }}</td>
+              <td>{{ branch.name }}</td>
+              <td>{{ branch.address }}</td>
+              <td>
+                <span class="badge" [class.badge-in]="branch.active" [class.badge-out]="!branch.active">
+                  {{ branch.active ? 'Ativa' : 'Inativa' }}
+                </span>
+              </td>
               <td>
                 <div class="table-actions">
-                  <button class="icon-btn" type="button" (click)="openEditForm(supplier)" aria-label="Editar fornecedor">
+                  <button class="icon-btn" type="button" (click)="openEditForm(branch)" aria-label="Editar filial">
                     <app-icon name="edit" [size]="18" />
                   </button>
-                  <button class="icon-btn" type="button" (click)="deleteSupplier(supplier)" aria-label="Excluir fornecedor">
+                  <button class="icon-btn" type="button" (click)="deleteBranch(branch)" aria-label="Excluir filial">
                     <app-icon name="delete" [size]="18" />
                   </button>
                 </div>

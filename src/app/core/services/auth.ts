@@ -25,6 +25,7 @@ export class AuthService {
     const token = this.token();
     return token !== null && !this.isExpired(token);
   });
+  readonly isAdmin = computed(() => this.currentUser()?.role === 'Admin');
 
   login(email: string, password: string): Observable<AuthResponse> {
     const body: LoginRequest = { email, password };
