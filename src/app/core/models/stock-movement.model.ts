@@ -14,6 +14,8 @@ export interface StockMovement {
   reason?: string | null;
   movementDate: string;
   stockBalanceAfter: number;
+  requesterName?: string | null;
+  sector?: string | null;
 }
 
 export interface CreateStockMovement {
@@ -22,4 +24,6 @@ export interface CreateStockMovement {
   type: MovementType;
   quantity: number;
   reason?: string | null;
+  requesterName?: string | null;
+  sector?: string | null;
 }

@@ -65,6 +65,16 @@
               }
             </div>
 
+            <div class="field">
+              <label for="requesterName">Solicitante</label>
+              <input id="requesterName" type="text" formControlName="requesterName" placeholder="Nome de quem solicitou" />
+            </div>
+
+            <div class="field">
+              <label for="sector">Setor</label>
+              <input id="sector" type="text" formControlName="sector" placeholder="Opcional" />
+            </div>
+
             <div class="field full-width">
               <label for="reason">Motivo</label>
               <input id="reason" type="text" formControlName="reason" placeholder="Opcional" />
@@ -138,6 +148,8 @@
                 <th>Tipo</th>
                 <th>Quantidade</th>
                 <th>Motivo</th>
+                <th>Solicitante</th>
+                <th>Setor</th>
                 <th>Data</th>
                 <th>Saldo</th>
               </tr>
@@ -157,6 +169,8 @@
                   </td>
                   <td>{{ movement.quantity }}</td>
                   <td>{{ movement.reason }}</td>
+                  <td>{{ movement.requesterName }}</td>
+                  <td>{{ movement.sector }}</td>
                   <td>{{ movement.movementDate | date: 'dd/MM/yyyy HH:mm' }}</td>
                   <td>{{ movement.stockBalanceAfter }}</td>
                 </tr>
@@ -206,6 +220,7 @@
                 <th>Quantidade</th>
                 <th>Mínimo</th>
                 <th>Status</th>
+                <th>Nº Solicitação de Compra</th>
               </tr>
             </thead>
             <tbody>
@@ -220,7 +235,7 @@
                       min="0"
                       class="inline-number-input"
                       [value]="ps.minimumQuantity"
-                      [disabled]="savingMinimumFor() === ps.productId"
+                      [disabled]="savingFieldFor() === ps.productId"
                       (change)="updateMinimum(ps, $any($event.target).value)"
                     />
                   </td>
@@ -230,6 +245,17 @@
                     } @else {
                       <span class="badge badge-in">ok</span>
                     }
+                  </td>
+                  <td>
+                    <input
+                      type="text"
+                      maxlength="50"
+                      class="inline-text-input"
+                      placeholder="Opcional"
+                      [value]="ps.purchaseRequestNumber"
+                      [disabled]="savingFieldFor() === ps.productId"
+                      (change)="updatePurchaseRequestNumber(ps, $any($event.target).value)"
+                    />
                   </td>
                 </tr>
               }

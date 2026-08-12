@@ -6,9 +6,11 @@ export interface ProductStock {
   branchName: string;
   quantity: number;
   minimumQuantity: number;
+  purchaseRequestNumber?: string | null;
   lowStock: boolean;
 }
 
 export interface UpdateProductStock {
   minimumQuantity: number;
+  purchaseRequestNumber?: string | null;
 }
