@@ -7,7 +7,7 @@ import { BranchService } from '../../core/services/branch.service';
 import { ProductStockService } from '../../core/services/product-stock.service';
 import { StockMovementService } from '../../core/services/stock-movement.service';
 import { Branch } from '../../core/models/branch.model';
-import { ProductStock } from '../../core/models/product-stock.model';
+import { ProductStock, UpdateProductStock } from '../../core/models/product-stock.model';
 import { MovementType, StockMovement } from '../../core/models/stock-movement.model';
 import { EmptyState } from '../../shared/empty-state/empty-state';
 import { Icon } from '../../shared/icon/icon';
@@ -50,7 +50,7 @@ export class Estoque implements OnInit {
   protected readonly levelPage = signal(1);
   protected readonly levelTotalPages = signal(1);
   protected readonly levelTotalCount = signal(0);
-  protected readonly savingMinimumFor = signal<number | null>(null);
+  protected readonly savingFieldFor = signal<number | null>(null);
 
   protected readonly saving = signal(false);
   protected readonly showForm = signal(false);
@@ -61,6 +61,8 @@ export class Estoque implements OnInit {
     type: [MovementType.Inbound, Validators.required],
     quantity: [1, [Validators.required, Validators.min(1)]],
     reason: [''],
+    requesterName: [''],
+    sector: [''],
   });
 
   constructor() {
@@ -102,7 +104,14 @@ export class Estoque implements OnInit {
 
   protected openForm(): void {
     this.formError.set('');
-    this.form.reset({ productId: null, type: MovementType.Inbound, quantity: 1, reason: '' });
+    this.form.reset({
+      productId: null,
+      type: MovementType.Inbound,
+      quantity: 1,
+      reason: '',
+      requesterName: '',
+      sector: '',
+    });
     this.loadBranchProductStocks();
     this.showForm.set(true);
   }
@@ -152,6 +161,8 @@ export class Estoque implements OnInit {
         type: raw.type,
         quantity: raw.quantity,
         reason: raw.reason || null,
+        requesterName: raw.requesterName || null,
+        sector: raw.sector || null,
       })
       .subscribe({
         next: () => {
@@ -168,21 +179,39 @@ export class Estoque implements OnInit {
   }
 
   protected updateMinimum(productStock: ProductStock, value: string): void {
-    const branchId = this.selectedBranchId();
     const minimumQuantity = Number(value);
-    if (!branchId || Number.isNaN(minimumQuantity) || minimumQuantity < 0) {
+    if (Number.isNaN(minimumQuantity) || minimumQuantity < 0) {
       return;
     }
 
-    this.savingMinimumFor.set(productStock.productId);
-    this.productStockService.updateMinimum(branchId, productStock.productId, { minimumQuantity }).subscribe({
+    this.saveProductStock(productStock, {
+      minimumQuantity,
+      purchaseRequestNumber: productStock.purchaseRequestNumber ?? null,
+    });
+  }
+
+  protected updatePurchaseRequestNumber(productStock: ProductStock, value: string): void {
+    this.saveProductStock(productStock, {
+      minimumQuantity: productStock.minimumQuantity,
+      purchaseRequestNumber: value || null,
+    });
+  }
+
+  private saveProductStock(productStock: ProductStock, dto: UpdateProductStock): void {
+    const branchId = this.selectedBranchId();
+    if (!branchId) {
+      return;
+    }
+
+    this.savingFieldFor.set(productStock.productId);
+    this.productStockService.updateMinimum(branchId, productStock.productId, dto).subscribe({
       next: (updated) => {
         this.levels.update((items) =>
           items.map((item) => (item.productId === updated.productId ? updated : item)),
         );
-        this.savingMinimumFor.set(null);
+        this.savingFieldFor.set(null);
       },
-      error: () => this.savingMinimumFor.set(null),
+      error: () => this.savingFieldFor.set(null),
     });
   }
 
