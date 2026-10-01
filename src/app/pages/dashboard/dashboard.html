@@ -4,42 +4,62 @@
     <p>Visão geral do seu estoque.</p>
   </header>
 
-  <div class="stat-grid">
-    @for (stat of stats; track stat.label) {
-      <div class="stat-card" [class.warning]="stat.warning">
-        <span class="stat-label">{{ stat.label }}</span>
-        <span class="stat-value">{{ stat.value }}</span>
+  @if (loading()) {
+    <div class="card"><p class="loading-text">Carregando dashboard...</p></div>
+  } @else {
+    <div class="stat-grid">
+      <div class="stat-card">
+        <span class="stat-label">Total de Produtos</span>
+        <span class="stat-value">{{ totalProducts() }}</span>
       </div>
-    }
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <h2>Últimas movimentações</h2>
+      <div class="stat-card" [class.warning]="lowStockCount() > 0">
+        <span class="stat-label">Estoque Baixo</span>
+        <span class="stat-value">{{ lowStockCount() }}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Valor em Estoque</span>
+        <span class="stat-value">{{ totalStockValue() | currency: 'BRL' }}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Movimentações Hoje</span>
+        <span class="stat-value">{{ movementsToday() }}</span>
+      </div>
     </div>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Produto</th>
-          <th>Tipo</th>
-          <th>Quantidade</th>
-          <th>Data</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (mov of movimentacoes; track mov.produto + mov.data) {
-          <tr>
-            <td>{{ mov.produto }}</td>
-            <td>
-              <span class="badge" [class.badge-in]="mov.tipo === 'entrada'" [class.badge-out]="mov.tipo === 'saida'">
-                {{ mov.tipo === 'entrada' ? 'Entrada' : 'Saída' }}
-              </span>
-            </td>
-            <td>{{ mov.quantidade }}</td>
-            <td>{{ mov.data }}</td>
-          </tr>
-        }
-      </tbody>
-    </table>
-  </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>Últimas movimentações</h2>
+      </div>
+      @if (recentMovements().length === 0) {
+        <p class="loading-text">Nenhuma movimentação registrada ainda.</p>
+      } @else {
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th>Filial</th>
+              <th>Tipo</th>
+              <th>Quantidade</th>
+              <th>Data</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (mov of recentMovements(); track mov.productName + mov.movementDate) {
+              <tr>
+                <td>{{ mov.productName }}</td>
+                <td>{{ mov.branchName }}</td>
+                <td>
+                  <span class="badge" [class.badge-in]="mov.type === 'Inbound'" [class.badge-out]="mov.type === 'Outbound'">
+                    {{ mov.type === 'Inbound' ? 'Entrada' : 'Saída' }}
+                  </span>
+                </td>
+                <td>{{ mov.quantity }}</td>
+                <td>{{ mov.movementDate | date: 'dd/MM/yyyy HH:mm' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  }
 </div>

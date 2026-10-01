@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from '../config/api.config';
-import { CreateStockMovement, StockMovement } from '../models/stock-movement.model';
+import { CreateStockMovement, StockMovement, UpdateStockMovement } from '../models/stock-movement.model';
 import { PagedResult } from '../models/paged-result.model';
 
 @Injectable({ providedIn: 'root' })
@@ -35,5 +35,9 @@ export class StockMovementService {
 
   register(dto: CreateStockMovement): Observable<StockMovement> {
     return this.http.post<StockMovement>(this.baseUrl, dto);
+  }
+
+  update(id: number, dto: UpdateStockMovement): Observable<StockMovement> {
+    return this.http.put<StockMovement>(`${this.baseUrl}/${id}`, dto);
   }
 }

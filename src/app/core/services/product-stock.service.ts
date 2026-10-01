@@ -28,7 +28,7 @@ export class ProductStockService {
     return this.http.get<ProductStock[]>(`${this.baseUrl}/report`, { params });
   }
 
-  updateMinimum(branchId: number, productId: number, dto: UpdateProductStock): Observable<ProductStock> {
+  update(branchId: number, productId: number, dto: UpdateProductStock): Observable<ProductStock> {
     const params = new HttpParams().set('branchId', branchId);
     return this.http.put<ProductStock>(`${this.baseUrl}/${productId}`, dto, { params });
   }

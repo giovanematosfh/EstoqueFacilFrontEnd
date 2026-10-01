@@ -27,3 +27,10 @@ export interface CreateStockMovement {
   requesterName?: string | null;
   sector?: string | null;
 }
+
+export interface UpdateStockMovement {
+  quantity: number;
+  reason?: string | null;
+  requesterName?: string | null;
+  sector?: string | null;
+}

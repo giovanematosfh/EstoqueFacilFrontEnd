@@ -1,35 +1,35 @@
-import { Component } from '@angular/core';
-
-interface StatCard {
-  label: string;
-  value: string;
-  warning?: boolean;
-}
-
-interface Movimentacao {
-  produto: string;
-  tipo: 'entrada' | 'saida';
-  quantidade: number;
-  data: string;
-}
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DashboardService } from '../../core/services/dashboard.service';
+import { DashboardMovement } from '../../core/models/dashboard.model';
 
 @Component({
   selector: 'app-dashboard',
+  imports: [DatePipe, CurrencyPipe],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
-export class Dashboard {
-  readonly stats: StatCard[] = [
-    { label: 'Total de Produtos', value: '1.248' },
-    { label: 'Estoque Baixo', value: '12', warning: true },
-    { label: 'Valor em Estoque', value: 'R$ 184.320,00' },
-    { label: 'Movimentações Hoje', value: '37' },
-  ];
+export class Dashboard implements OnInit {
+  private readonly dashboardService = inject(DashboardService);
 
-  readonly movimentacoes: Movimentacao[] = [
-    { produto: 'Parafuso Sextavado M8', tipo: 'entrada', quantidade: 500, data: '07/08/2026 09:12' },
-    { produto: 'Luva de Proteção G', tipo: 'saida', quantidade: 24, data: '07/08/2026 08:45' },
-    { produto: 'Cabo de Rede Cat6 (metro)', tipo: 'entrada', quantidade: 300, data: '06/08/2026 17:30' },
-    { produto: 'Fita Isolante Preta', tipo: 'saida', quantidade: 60, data: '06/08/2026 15:02' },
-  ];
+  protected readonly loading = signal(true);
+  protected readonly totalProducts = signal(0);
+  protected readonly lowStockCount = signal(0);
+  protected readonly totalStockValue = signal(0);
+  protected readonly movementsToday = signal(0);
+  protected readonly recentMovements = signal<DashboardMovement[]>([]);
+
+  ngOnInit(): void {
+    this.dashboardService.getSummary().subscribe({
+      next: (summary) => {
+        this.totalProducts.set(summary.totalProducts);
+        this.lowStockCount.set(summary.lowStockCount);
+        this.totalStockValue.set(summary.totalStockValue);
+        this.movementsToday.set(summary.movementsToday);
+        this.recentMovements.set(summary.recentMovements);
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false),
+    });
+  }
 }

@@ -6,16 +6,22 @@ import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { BranchService } from '../../core/services/branch.service';
 import { ProductStockService } from '../../core/services/product-stock.service';
 import { StockMovementService } from '../../core/services/stock-movement.service';
+import { PurchaseRequestService } from '../../core/services/purchase-request.service';
 import { Branch } from '../../core/models/branch.model';
 import { ProductStock, UpdateProductStock } from '../../core/models/product-stock.model';
 import { MovementType, StockMovement } from '../../core/models/stock-movement.model';
+import { PurchaseRequest } from '../../core/models/purchase-request.model';
 import { EmptyState } from '../../shared/empty-state/empty-state';
 import { Icon } from '../../shared/icon/icon';
 import { Pagination } from '../../shared/pagination/pagination';
 
 const PAGE_SIZE = 10;
 
-type EstoqueTab = 'movements' | 'levels';
+type EstoqueTab = 'movements' | 'levels' | 'purchaseRequests';
+
+function isoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
 
 @Component({
   selector: 'app-estoque',
@@ -27,8 +33,10 @@ export class Estoque implements OnInit {
   private readonly branchService = inject(BranchService);
   private readonly productStockService = inject(ProductStockService);
   private readonly stockMovementService = inject(StockMovementService);
+  private readonly purchaseRequestService = inject(PurchaseRequestService);
   private readonly movementSearchInput$ = new Subject<string>();
   private readonly levelSearchInput$ = new Subject<string>();
+  private readonly purchaseRequestSearchInput$ = new Subject<string>();
 
   protected readonly MovementType = MovementType;
 
@@ -52,9 +60,22 @@ export class Estoque implements OnInit {
   protected readonly levelTotalCount = signal(0);
   protected readonly savingFieldFor = signal<number | null>(null);
 
+  protected readonly purchaseRequests = signal<PurchaseRequest[]>([]);
+  protected readonly purchaseRequestsLoading = signal(true);
+  protected readonly purchaseRequestSearchTerm = signal('');
+  protected readonly purchaseRequestPage = signal(1);
+  protected readonly purchaseRequestTotalPages = signal(1);
+  protected readonly purchaseRequestTotalCount = signal(0);
+
   protected readonly saving = signal(false);
   protected readonly showForm = signal(false);
   protected readonly formError = signal('');
+  protected readonly editingMovementId = signal<number | null>(null);
+
+  protected readonly savingPurchaseRequest = signal(false);
+  protected readonly showPurchaseRequestForm = signal(false);
+  protected readonly purchaseRequestFormError = signal('');
+  protected readonly editingPurchaseRequestId = signal<number | null>(null);
 
   protected readonly form = this.fb.nonNullable.group({
     productId: this.fb.control<number | null>(null, Validators.required),
@@ -63,6 +84,12 @@ export class Estoque implements OnInit {
     reason: [''],
     requesterName: [''],
     sector: [''],
+  });
+
+  protected readonly purchaseRequestForm = this.fb.nonNullable.group({
+    productId: this.fb.control<number | null>(null, Validators.required),
+    requestNumber: ['', [Validators.required, Validators.maxLength(50)]],
+    requestDate: [isoDate(new Date()), Validators.required],
   });
 
   constructor() {
@@ -81,6 +108,14 @@ export class Estoque implements OnInit {
         this.levelPage.set(1);
         this.loadLevels();
       });
+
+    this.purchaseRequestSearchInput$
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed())
+      .subscribe((term) => {
+        this.purchaseRequestSearchTerm.set(term);
+        this.purchaseRequestPage.set(1);
+        this.loadPurchaseRequests();
+      });
   }
 
   ngOnInit(): void {
@@ -97,12 +132,16 @@ export class Estoque implements OnInit {
     this.movementPage.set(1);
     this.levelSearchTerm.set('');
     this.levelPage.set(1);
+    this.purchaseRequestSearchTerm.set('');
+    this.purchaseRequestPage.set(1);
     this.loadMovements();
     this.loadLevels();
+    this.loadPurchaseRequests();
     this.loadBranchProductStocks();
   }
 
   protected openForm(): void {
+    this.editingMovementId.set(null);
     this.formError.set('');
     this.form.reset({
       productId: null,
@@ -112,7 +151,28 @@ export class Estoque implements OnInit {
       requesterName: '',
       sector: '',
     });
+    this.form.controls.productId.enable();
+    this.form.controls.type.enable();
     this.loadBranchProductStocks();
+    this.showForm.set(true);
+  }
+
+  protected openEditMovementForm(movement: StockMovement): void {
+    this.editingMovementId.set(movement.id);
+    this.formError.set('');
+    this.form.reset({
+      productId: movement.productId,
+      type: movement.type === 'Inbound' ? MovementType.Inbound : MovementType.Outbound,
+      quantity: movement.quantity,
+      reason: movement.reason ?? '',
+      requesterName: movement.requesterName ?? '',
+      sector: movement.sector ?? '',
+    });
+    this.form.controls.productId.disable();
+    this.form.controls.type.disable();
+    if (this.branchProductStocks().length === 0) {
+      this.loadBranchProductStocks();
+    }
     this.showForm.set(true);
   }
 
@@ -138,6 +198,15 @@ export class Estoque implements OnInit {
     this.loadLevels();
   }
 
+  protected onPurchaseRequestSearchInput(value: string): void {
+    this.purchaseRequestSearchInput$.next(value);
+  }
+
+  protected onPurchaseRequestPageChange(page: number): void {
+    this.purchaseRequestPage.set(page);
+    this.loadPurchaseRequests();
+  }
+
   protected submitForm(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -153,29 +222,49 @@ export class Estoque implements OnInit {
     this.formError.set('');
 
     const raw = this.form.getRawValue();
+    const editingId = this.editingMovementId();
 
-    this.stockMovementService
-      .register({
-        productId: raw.productId!,
-        branchId,
-        type: raw.type,
-        quantity: raw.quantity,
-        reason: raw.reason || null,
-        requesterName: raw.requesterName || null,
-        sector: raw.sector || null,
-      })
-      .subscribe({
-        next: () => {
-          this.saving.set(false);
-          this.showForm.set(false);
-          this.loadMovements();
-          this.loadLevels();
-        },
-        error: (err) => {
-          this.saving.set(false);
-          this.formError.set(err.error?.mensagem ?? 'Não foi possível registrar a movimentação.');
-        },
-      });
+    const request = editingId
+      ? this.stockMovementService.update(editingId, {
+          quantity: raw.quantity,
+          reason: raw.reason || null,
+          requesterName: raw.requesterName || null,
+          sector: raw.sector || null,
+        })
+      : this.stockMovementService.register({
+          productId: raw.productId!,
+          branchId,
+          type: raw.type,
+          quantity: raw.quantity,
+          reason: raw.reason || null,
+          requesterName: raw.requesterName || null,
+          sector: raw.sector || null,
+        });
+
+    request.subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.showForm.set(false);
+        this.loadMovements();
+        this.loadLevels();
+      },
+      error: (err) => {
+        this.saving.set(false);
+        this.formError.set(err.error?.mensagem ?? 'Não foi possível registrar a movimentação.');
+      },
+    });
+  }
+
+  protected updateQuantity(productStock: ProductStock, value: string): void {
+    const quantity = Number(value);
+    if (Number.isNaN(quantity) || quantity < 0) {
+      return;
+    }
+
+    this.saveProductStock(productStock, {
+      quantity,
+      minimumQuantity: productStock.minimumQuantity,
+    });
   }
 
   protected updateMinimum(productStock: ProductStock, value: string): void {
@@ -185,15 +274,8 @@ export class Estoque implements OnInit {
     }
 
     this.saveProductStock(productStock, {
+      quantity: productStock.quantity,
       minimumQuantity,
-      purchaseRequestNumber: productStock.purchaseRequestNumber ?? null,
-    });
-  }
-
-  protected updatePurchaseRequestNumber(productStock: ProductStock, value: string): void {
-    this.saveProductStock(productStock, {
-      minimumQuantity: productStock.minimumQuantity,
-      purchaseRequestNumber: value || null,
     });
   }
 
@@ -204,7 +286,7 @@ export class Estoque implements OnInit {
     }
 
     this.savingFieldFor.set(productStock.productId);
-    this.productStockService.updateMinimum(branchId, productStock.productId, dto).subscribe({
+    this.productStockService.update(branchId, productStock.productId, dto).subscribe({
       next: (updated) => {
         this.levels.update((items) =>
           items.map((item) => (item.productId === updated.productId ? updated : item)),
@@ -212,6 +294,93 @@ export class Estoque implements OnInit {
         this.savingFieldFor.set(null);
       },
       error: () => this.savingFieldFor.set(null),
+    });
+  }
+
+  protected openPurchaseRequestForm(productId: number | null = null): void {
+    this.editingPurchaseRequestId.set(null);
+    this.purchaseRequestFormError.set('');
+    this.purchaseRequestForm.reset({
+      productId,
+      requestNumber: '',
+      requestDate: isoDate(new Date()),
+    });
+    this.purchaseRequestForm.controls.productId.enable();
+    if (this.branchProductStocks().length === 0) {
+      this.loadBranchProductStocks();
+    }
+    this.showPurchaseRequestForm.set(true);
+  }
+
+  protected openEditPurchaseRequestForm(purchaseRequest: PurchaseRequest): void {
+    this.editingPurchaseRequestId.set(purchaseRequest.id);
+    this.purchaseRequestFormError.set('');
+    this.purchaseRequestForm.reset({
+      productId: purchaseRequest.productId,
+      requestNumber: purchaseRequest.requestNumber,
+      requestDate: purchaseRequest.requestDate.slice(0, 10),
+    });
+    this.purchaseRequestForm.controls.productId.disable();
+    if (this.branchProductStocks().length === 0) {
+      this.loadBranchProductStocks();
+    }
+    this.showPurchaseRequestForm.set(true);
+  }
+
+  protected closePurchaseRequestForm(): void {
+    this.showPurchaseRequestForm.set(false);
+  }
+
+  protected submitPurchaseRequestForm(): void {
+    if (this.purchaseRequestForm.invalid) {
+      this.purchaseRequestForm.markAllAsTouched();
+      return;
+    }
+
+    const branchId = this.selectedBranchId();
+    if (!branchId) {
+      return;
+    }
+
+    this.savingPurchaseRequest.set(true);
+    this.purchaseRequestFormError.set('');
+
+    const raw = this.purchaseRequestForm.getRawValue();
+    const editingId = this.editingPurchaseRequestId();
+
+    const request = editingId
+      ? this.purchaseRequestService.update(editingId, {
+          requestNumber: raw.requestNumber,
+          requestDate: raw.requestDate,
+        })
+      : this.purchaseRequestService.create({
+          productId: raw.productId!,
+          branchId,
+          requestNumber: raw.requestNumber,
+          requestDate: raw.requestDate,
+        });
+
+    request.subscribe({
+      next: () => {
+        this.savingPurchaseRequest.set(false);
+        this.showPurchaseRequestForm.set(false);
+        this.loadPurchaseRequests();
+      },
+      error: (err) => {
+        this.savingPurchaseRequest.set(false);
+        this.purchaseRequestFormError.set(err.error?.mensagem ?? 'Não foi possível registrar a solicitação de compra.');
+      },
+    });
+  }
+
+  protected deletePurchaseRequest(purchaseRequest: PurchaseRequest): void {
+    if (!confirm(`Excluir a solicitação de compra "${purchaseRequest.requestNumber}"?`)) {
+      return;
+    }
+
+    this.purchaseRequestService.remove(purchaseRequest.id).subscribe({
+      next: () => this.loadPurchaseRequests(),
+      error: (err) => alert(err.error?.mensagem ?? 'Não foi possível excluir a solicitação de compra.'),
     });
   }
 
@@ -224,15 +393,18 @@ export class Estoque implements OnInit {
           this.selectedBranchId.set(active.id);
           this.loadMovements();
           this.loadLevels();
+          this.loadPurchaseRequests();
           this.loadBranchProductStocks();
         } else {
           this.movementsLoading.set(false);
           this.levelsLoading.set(false);
+          this.purchaseRequestsLoading.set(false);
         }
       },
       error: () => {
         this.movementsLoading.set(false);
         this.levelsLoading.set(false);
+        this.purchaseRequestsLoading.set(false);
       },
     });
   }
@@ -274,6 +446,26 @@ export class Estoque implements OnInit {
           this.levelsLoading.set(false);
         },
         error: () => this.levelsLoading.set(false),
+      });
+  }
+
+  private loadPurchaseRequests(): void {
+    const branchId = this.selectedBranchId();
+    if (!branchId) {
+      return;
+    }
+
+    this.purchaseRequestsLoading.set(true);
+    this.purchaseRequestService
+      .getByBranch(branchId, this.purchaseRequestSearchTerm(), this.purchaseRequestPage(), PAGE_SIZE)
+      .subscribe({
+        next: (result) => {
+          this.purchaseRequests.set(result.items);
+          this.purchaseRequestTotalPages.set(result.totalPages);
+          this.purchaseRequestTotalCount.set(result.totalCount);
+          this.purchaseRequestsLoading.set(false);
+        },
+        error: () => this.purchaseRequestsLoading.set(false),
       });
   }
 
