@@ -1,17 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <defs>
-    <linearGradient id="egg" x1="10" y1="6" x2="54" y2="58" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#166534" />
-      <stop offset="1" stop-color="#4ade80" />
-    </linearGradient>
-    <linearGradient id="shine" x1="20" y1="12" x2="30" y2="30" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.55" />
-      <stop offset="1" stop-color="#ffffff" stop-opacity="0" />
+    <linearGradient id="bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0b3320" />
+      <stop offset="0.55" stop-color="#15803d" />
+      <stop offset="1" stop-color="#22c55e" />
     </linearGradient>
   </defs>
-  <path
-    d="M32,4 C43,4 54,21 54,35 C54,51 44,59 32,59 C20,59 10,51 10,35 C10,21 21,4 32,4 Z"
-    fill="url(#egg)"
-  />
-  <ellipse cx="24" cy="20" rx="8" ry="10" fill="url(#shine)" />
+  <rect width="64" height="64" rx="14" fill="url(#bg)" />
+  <!-- stock box -->
+  <path d="M32 12 L50 21 L50 43 L32 52 L14 43 L14 21 Z" fill="#ffffff" fill-opacity="0.18" />
+  <path d="M32 12 L50 21 L32 30 L14 21 Z" fill="#ffffff" />
+  <path d="M14 21 L32 30 L32 52 L14 43 Z" fill="#ffffff" fill-opacity="0.85" />
+  <path d="M50 21 L32 30 L32 52 L50 43 Z" fill="#ffffff" fill-opacity="0.6" />
+  <path d="M23 16.5 L41 25.5 L41 33 L37 35 L37 27.5 L19 18.5 Z" fill="#15803d" fill-opacity="0.35" />
 </svg>
