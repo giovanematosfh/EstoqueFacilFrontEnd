@@ -10,6 +10,7 @@ import {
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth';
 import { Icon } from '../../shared/icon/icon';
+import { AuthHero } from '../../shared/auth-hero/auth-hero';
 
 function passwordsMatchValidator(): ValidatorFn {
   return (group: AbstractControl): ValidationErrors | null => {
@@ -21,7 +22,7 @@ function passwordsMatchValidator(): ValidatorFn {
 
 @Component({
   selector: 'app-register',
-  imports: [ReactiveFormsModule, RouterLink, Icon],
+  imports: [ReactiveFormsModule, RouterLink, Icon, AuthHero],
   templateUrl: './register.html',
 })
 export class Register {

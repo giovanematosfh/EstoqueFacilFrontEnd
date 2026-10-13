@@ -3,10 +3,11 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth';
 import { Icon } from '../../shared/icon/icon';
+import { AuthHero } from '../../shared/auth-hero/auth-hero';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink, Icon],
+  imports: [ReactiveFormsModule, RouterLink, Icon, AuthHero],
   templateUrl: './login.html',
 })
 export class Login {
