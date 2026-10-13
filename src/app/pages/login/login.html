@@ -1,57 +1,87 @@
-<div class="login-page">
-  <div class="login-card">
-    <div class="login-brand">
-      <span class="brand-mark">EF</span>
-      <span class="brand-name">Estoque Fácil</span>
-    </div>
+<div class="login-page auth-split">
+  <aside class="auth-hero" aria-hidden="true">
+    <span class="hero-blob hero-blob-1"></span>
+    <span class="hero-blob hero-blob-2"></span>
+    <span class="hero-box hero-box-1"></span>
+    <span class="hero-box hero-box-2"></span>
+    <span class="hero-box hero-box-3"></span>
+    <span class="hero-box hero-box-4"></span>
 
-    <p class="login-subtitle">Entre com sua conta para acessar o sistema.</p>
-
-    <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
-      <div class="field">
-        <label for="email">E-mail</label>
-        <input
-          id="email"
-          type="email"
-          formControlName="email"
-          placeholder="seu@email.com"
-          autocomplete="email"
-          [class.invalid]="form.controls.email.invalid && form.controls.email.touched"
-        />
-        @if (form.controls.email.invalid && form.controls.email.touched) {
-          <span class="field-error">Informe um e-mail válido.</span>
-        }
+    <div class="hero-content">
+      <div class="login-brand hero-brand">
+        <span class="brand-mark">EF</span>
+        <span class="brand-name">Estoque Fácil</span>
       </div>
 
-      <div class="field">
-        <label for="password">Senha</label>
-        <input
-          id="password"
-          type="password"
-          formControlName="password"
-          placeholder="Sua senha"
-          autocomplete="current-password"
-          [class.invalid]="form.controls.password.invalid && form.controls.password.touched"
-        />
-        @if (form.controls.password.invalid && form.controls.password.touched) {
-          <span class="field-error">Informe a senha.</span>
-        }
-      </div>
-
-      @if (errorMessage()) {
-        <div class="alert-error">
-          <app-icon name="lock" [size]="16" />
-          <span>{{ errorMessage() }}</span>
-        </div>
-      }
-
-      <button class="btn btn-primary login-submit" type="submit" [disabled]="submitting()">
-        {{ submitting() ? 'Entrando...' : 'Entrar' }}
-      </button>
-
-      <p class="login-footer">
-        Não tem uma conta? <a routerLink="/register">Criar conta</a>
+      <h1 class="hero-title">Seu estoque sob controle, de ponta a ponta.</h1>
+      <p class="hero-text">
+        Produtos, fornecedores, filiais e movimentações em um só lugar — simples, rápido e sempre atualizado.
       </p>
-    </form>
-  </div>
+
+      <ul class="hero-features">
+        <li><app-icon name="produtos" [size]="18" /> Cadastro completo de produtos</li>
+        <li><app-icon name="estoque" [size]="18" /> Entradas e saídas em tempo real</li>
+        <li><app-icon name="relatorios" [size]="18" /> Relatórios para decidir melhor</li>
+      </ul>
+    </div>
+  </aside>
+
+  <main class="auth-panel">
+    <div class="login-card">
+      <div class="login-brand auth-panel-brand">
+        <span class="brand-mark">EF</span>
+        <span class="brand-name">Estoque Fácil</span>
+      </div>
+
+      <h2 class="auth-title">Bem-vindo de volta</h2>
+      <p class="login-subtitle">Entre com sua conta para acessar o sistema.</p>
+
+      <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
+        <div class="field">
+          <label for="email">E-mail</label>
+          <input
+            id="email"
+            type="email"
+            formControlName="email"
+            placeholder="seu@email.com"
+            autocomplete="email"
+            [class.invalid]="form.controls.email.invalid && form.controls.email.touched"
+          />
+          @if (form.controls.email.invalid && form.controls.email.touched) {
+            <span class="field-error">Informe um e-mail válido.</span>
+          }
+        </div>
+
+        <div class="field">
+          <label for="password">Senha</label>
+          <input
+            id="password"
+            type="password"
+            formControlName="password"
+            placeholder="Sua senha"
+            autocomplete="current-password"
+            [class.invalid]="form.controls.password.invalid && form.controls.password.touched"
+          />
+          @if (form.controls.password.invalid && form.controls.password.touched) {
+            <span class="field-error">Informe a senha.</span>
+          }
+        </div>
+
+        @if (errorMessage()) {
+          <div class="alert-error">
+            <app-icon name="lock" [size]="16" />
+            <span>{{ errorMessage() }}</span>
+          </div>
+        }
+
+        <button class="btn btn-primary login-submit" type="submit" [disabled]="submitting()">
+          {{ submitting() ? 'Entrando...' : 'Entrar' }}
+        </button>
+
+        <p class="login-footer">
+          Não tem uma conta? <a routerLink="/register">Criar conta</a>
+        </p>
+      </form>
+    </div>
+  </main>
 </div>
