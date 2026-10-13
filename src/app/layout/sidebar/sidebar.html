@@ -15,5 +15,21 @@
         }
       </a>
     }
+
+    @if (isSuperAdmin()) {
+      @if (!collapsed()) {
+        <span class="nav-section">Plataforma</span>
+      } @else {
+        <span class="nav-divider"></span>
+      }
+      @for (item of platformItems; track item.route) {
+        <a class="nav-item" [routerLink]="item.route" routerLinkActive="active" (click)="navigate.emit()">
+          <app-icon [name]="item.icon" [size]="20" />
+          @if (!collapsed()) {
+            <span class="nav-label">{{ item.label }}</span>
+          }
+        </a>
+      }
+    }
   </nav>
 </aside>

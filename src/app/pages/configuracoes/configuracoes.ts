@@ -28,9 +28,12 @@ export class Configuracoes implements OnInit {
   protected readonly editingUser = signal<User | null>(null);
   protected readonly formError = signal('');
 
+  // password/role só valem no cadastro (editingUser null).
   protected readonly form = this.fb.nonNullable.group({
     fullName: ['', [Validators.required, Validators.maxLength(150)]],
     email: ['', [Validators.required, Validators.email]],
+    password: [''],
+    role: ['User'],
   });
 
   ngOnInit(): void {
@@ -39,10 +42,21 @@ export class Configuracoes implements OnInit {
     }
   }
 
+  protected openCreateForm(): void {
+    this.editingUser.set(null);
+    this.formError.set('');
+    this.form.reset({ fullName: '', email: '', password: '', role: 'User' });
+    this.form.controls.password.setValidators([Validators.required, Validators.minLength(6)]);
+    this.form.controls.password.updateValueAndValidity();
+    this.showEditForm.set(true);
+  }
+
   protected openEditForm(user: User): void {
     this.editingUser.set(user);
     this.formError.set('');
-    this.form.reset({ fullName: user.fullName, email: user.email });
+    this.form.reset({ fullName: user.fullName, email: user.email, password: '', role: user.role });
+    this.form.controls.password.clearValidators();
+    this.form.controls.password.updateValueAndValidity();
     this.showEditForm.set(true);
   }
 
@@ -57,14 +71,27 @@ export class Configuracoes implements OnInit {
     }
 
     const editingUser = this.editingUser();
-    if (!editingUser) {
-      return;
-    }
+    const { fullName, email, password, role } = this.form.getRawValue();
 
     this.saving.set(true);
     this.formError.set('');
 
-    this.userService.update(editingUser.id, this.form.getRawValue()).subscribe({
+    if (!editingUser) {
+      this.userService.create({ fullName, email, password, role }).subscribe({
+        next: (created) => {
+          this.saving.set(false);
+          this.showEditForm.set(false);
+          this.users.update((list) => [...list, created].sort((a, b) => a.fullName.localeCompare(b.fullName)));
+        },
+        error: (err) => {
+          this.saving.set(false);
+          this.formError.set(err.error?.mensagem ?? 'Não foi possível cadastrar o usuário.');
+        },
+      });
+      return;
+    }
+
+    this.userService.update(editingUser.id, { fullName, email }).subscribe({
       next: (updated) => {
         this.saving.set(false);
         this.showEditForm.set(false);

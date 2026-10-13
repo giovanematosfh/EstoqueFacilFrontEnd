@@ -24,6 +24,13 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         auth.logout();
         router.navigate(['/login']);
       }
+
+      // 402 = empresa desativada ou assinatura vencida.
+      if (error.status === 402) {
+        auth.logout();
+        auth.blockedMessage.set(error.error?.mensagem ?? 'O acesso da sua empresa está bloqueado.');
+        router.navigate(['/login']);
+      }
       return throwError(() => error);
     }),
   );

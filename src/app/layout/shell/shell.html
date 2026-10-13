@@ -6,8 +6,17 @@
   <div class="shell-main">
     <app-topbar (toggleSidebar)="toggleSidebar()" />
 
+    @if (dueWarning(); as warning) {
+      <div class="due-banner" role="status">
+        <app-icon name="lock" [size]="16" />
+        <span>{{ warning }}</span>
+      </div>
+    }
+
     <main class="shell-content">
       <router-outlet />
     </main>
+
+    <app-footer />
   </div>
 </div>

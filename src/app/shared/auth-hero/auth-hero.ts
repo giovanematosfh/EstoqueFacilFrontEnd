@@ -1,7 +1,7 @@
 import { Component, input } from '@angular/core';
 import { Icon } from '../icon/icon';
 
-// Green animated side panel shared by the login and register pages.
+// Green animated side panel of the login page.
 @Component({
   selector: 'aside[app-auth-hero]',
   imports: [Icon],

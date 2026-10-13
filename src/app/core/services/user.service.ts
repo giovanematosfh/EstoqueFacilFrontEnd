@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from '../config/api.config';
-import { UpdateUser, UpdateUserRole, UpdateUserStatus, User } from '../models/user.model';
+import { CreateUser, UpdateUser, UpdateUserRole, UpdateUserStatus, User } from '../models/user.model';
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
@@ -11,6 +11,10 @@ export class UserService {
 
   getAll(): Observable<User[]> {
     return this.http.get<User[]>(this.baseUrl);
+  }
+
+  create(dto: CreateUser): Observable<User> {
+    return this.http.post<User>(this.baseUrl, dto);
   }
 
   update(id: number, dto: UpdateUser): Observable<User> {
