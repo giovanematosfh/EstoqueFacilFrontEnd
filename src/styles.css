@@ -583,10 +583,10 @@ button {
   text-decoration: underline;
 }
 
-/* Login split layout: green hero on the left, white form panel on the right */
+/* Login split layout: painel verde com cena de depósito à esquerda, formulário à direita */
 .login-page.auth-split {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
   place-items: stretch;
   padding: 0;
   background: var(--color-surface);
@@ -596,33 +596,46 @@ button {
   position: relative;
   overflow: hidden;
   display: flex;
-  align-items: center;
-  padding: 56px 64px;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 56px 64px 0;
   color: #fff;
-  background: linear-gradient(135deg, var(--sidebar-bg) 0%, var(--color-primary-dark) 55%, var(--color-primary) 100%);
+  background: linear-gradient(135deg, var(--sidebar-bg) 0%, #0f3d27 40%, var(--color-primary-dark) 78%, var(--color-primary) 100%);
   background-size: 200% 200%;
   animation: hero-gradient 14s ease-in-out infinite;
 }
 
 .hero-content {
   position: relative;
-  z-index: 1;
-  max-width: 460px;
+  z-index: 2;
+  max-width: 480px;
   animation: auth-fade-up 0.8s ease-out both;
 }
 
-.hero-brand .brand-mark {
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(6px);
+/* Logo (SVG) no lugar das iniciais */
+.brand-mark.brand-logo,
+.login-brand .brand-mark.brand-logo {
+  display: block;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
+}
+
+.hero-brand .brand-mark.brand-logo {
+  width: 44px;
+  height: 44px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
 }
 
 .hero-brand .brand-name {
   color: #fff;
+  font-size: 20px;
 }
 
 .hero-title {
-  margin: 36px 0 14px;
+  margin: 32px 0 14px;
   font-size: 34px;
   line-height: 1.2;
   font-weight: 800;
@@ -633,12 +646,13 @@ button {
   font-size: 15px;
   line-height: 1.6;
   color: rgba(255, 255, 255, 0.82);
+  margin: 0;
 }
 
 .hero-features {
   list-style: none;
   padding: 0;
-  margin: 28px 0 0;
+  margin: 26px 0 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -665,58 +679,187 @@ button {
   height: 34px;
   border-radius: 9px;
   background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .hero-blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.45;
+  filter: blur(70px);
+  opacity: 0.4;
   animation: hero-blob 16s ease-in-out infinite alternate;
 }
 
-.hero-blob-1 {
-  width: 360px;
-  height: 360px;
-  background: #4ade80;
-  top: -120px;
-  right: -80px;
-}
+.hero-blob-1 { width: 380px; height: 380px; background: #4ade80; top: -140px; right: -100px; }
+.hero-blob-2 { width: 300px; height: 300px; background: #22c55e; bottom: 80px; left: -120px; animation-delay: -8s; }
 
-.hero-blob-2 {
-  width: 300px;
+/* Cena do depósito */
+.hero-scene {
+  position: relative;
+  z-index: 1;
+  margin: auto -64px 0;
   height: 300px;
-  background: #22c55e;
-  bottom: -120px;
-  left: -60px;
-  animation-delay: -8s;
+  flex-shrink: 0;
 }
 
-/* Floating "stock boxes" */
-.hero-box {
+.hero-shelves {
   position: absolute;
-  border: 2px solid rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
-  animation: hero-float 9s ease-in-out infinite;
+  left: 0;
+  right: 0;
+  bottom: 56px;
+  width: 100%;
+  height: 170px;
 }
 
-.hero-box-1 { width: 70px; height: 70px; top: 12%; right: 14%; }
-.hero-box-2 { width: 44px; height: 44px; bottom: 18%; right: 26%; animation-duration: 11s; animation-delay: -3s; }
-.hero-box-3 { width: 96px; height: 96px; bottom: 8%; right: 6%; animation-duration: 13s; animation-delay: -6s; }
-.hero-box-4 { width: 32px; height: 32px; top: 30%; right: 36%; animation-duration: 8s; animation-delay: -2s; }
+.hero-floor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 58px;
+  background: linear-gradient(180deg, #0a2a1b 0%, #061c12 100%);
+  border-top: 3px solid rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.floor-line {
+  position: absolute;
+  left: 0;
+  top: 26px;
+  width: 200%;
+  height: 4px;
+  background: repeating-linear-gradient(90deg, rgba(250, 204, 21, 0.75) 0 30px, transparent 30px 60px);
+  animation: floor-move 3s linear infinite;
+}
+
+/* Esteira com caixas */
+.hero-conveyor {
+  position: absolute;
+  right: 3%;
+  bottom: 58px;
+  width: 46%;
+  height: 120px;
+}
+
+.conveyor-boxes {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 30px;
+  height: 80px;
+  overflow: hidden;
+}
+
+.c-box {
+  position: absolute;
+  bottom: 0;
+  left: -70px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #f5d9a8, #d6a96a);
+  box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.08);
+  animation: box-ride 8s linear infinite;
+}
+
+.c-box::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 38%;
+  height: 22%;
+  background: rgba(22, 163, 74, 0.8);
+}
+
+.c-box-1 { width: 54px; height: 46px; }
+.c-box-2 { width: 40px; height: 36px; animation-delay: -2s; }
+.c-box-3 { width: 60px; height: 52px; animation-delay: -4s; }
+.c-box-4 { width: 46px; height: 40px; animation-delay: -6s; }
+
+.conveyor-belt {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 18px;
+  height: 12px;
+  border-radius: 6px;
+  background: #1e293b;
+  overflow: hidden;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
+}
+
+.belt-stripes {
+  position: absolute;
+  inset: 0;
+  width: 200%;
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.25) 0 6px, transparent 6px 18px);
+  animation: belt-move 0.8s linear infinite;
+}
+
+.conveyor-legs {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  bottom: 0;
+  height: 18px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.conveyor-legs span {
+  width: 6px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Empilhadeira */
+.hero-forklift {
+  position: absolute;
+  width: min(300px, 40%);
+  left: 12%;
+  bottom: 8px;
+  overflow: visible;
+  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.35));
+  animation: forklift-drive 7s ease-in-out infinite;
+}
+
+.fk-load {
+  animation: fk-lift 7s ease-in-out infinite;
+}
+
+.hero-forklift .wheel {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wheel-roll 7s ease-in-out infinite;
+}
+
+.fk-beacon {
+  animation: beacon 1s ease-in-out infinite;
+}
+
+.speed-line {
+  position: absolute;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5));
+  animation: speed-line 1.6s linear infinite;
+}
+
+.speed-line-1 { width: 80px; bottom: 90px; left: 1%; }
+.speed-line-2 { width: 54px; bottom: 120px; left: 3%; animation-delay: -0.8s; }
 
 .auth-panel {
   display: grid;
   place-items: center;
   padding: 32px 24px;
-  background: var(--color-surface);
+  background:
+    radial-gradient(circle at 100% 0%, var(--color-primary-light) 0, transparent 40%),
+    var(--color-surface);
 }
 
 .auth-split .login-card {
   max-width: 400px;
   box-shadow: none;
   padding: 0;
+  background: transparent;
   animation: auth-slide-in 0.7s ease-out both;
 }
 
@@ -758,9 +901,49 @@ button {
   to { transform: translate(-40px, 50px) scale(1.15); }
 }
 
-@keyframes hero-float {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-22px) rotate(12deg); }
+@keyframes floor-move {
+  from { transform: translateX(0); }
+  to { transform: translateX(-60px); }
+}
+
+@keyframes belt-move {
+  from { transform: translateX(-18px); }
+  to { transform: translateX(0); }
+}
+
+@keyframes box-ride {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(30vw + 70px)); }
+}
+
+/* empilhadeira: entra, para, ergue a carga, abaixa e volta */
+@keyframes forklift-drive {
+  0% { transform: translateX(-22%); }
+  25%, 75% { transform: translateX(0); }
+  100% { transform: translateX(-22%); }
+}
+
+@keyframes fk-lift {
+  0%, 30% { transform: translateY(0); }
+  45%, 60% { transform: translateY(-46px); }
+  72%, 100% { transform: translateY(0); }
+}
+
+@keyframes wheel-roll {
+  0% { transform: rotate(-200deg); }
+  25%, 75% { transform: rotate(0deg); }
+  100% { transform: rotate(-200deg); }
+}
+
+@keyframes beacon {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes speed-line {
+  from { opacity: 0; transform: translateX(0); }
+  30% { opacity: 1; }
+  to { opacity: 0; transform: translateX(-80px); }
 }
 
 @keyframes auth-fade-up {
@@ -798,7 +981,14 @@ button {
   .hero-content,
   .hero-features li,
   .hero-blob,
-  .hero-box,
+  .floor-line,
+  .c-box,
+  .belt-stripes,
+  .hero-forklift,
+  .fk-load,
+  .hero-forklift .wheel,
+  .fk-beacon,
+  .speed-line,
   .auth-split .login-card {
     animation: none;
     opacity: 1;
