@@ -32,8 +32,12 @@ export class PurchaseRequestService {
     return this.http.get<PagedResult<PurchaseRequest>>(this.baseUrl, { params });
   }
 
-  getReport(branchId: number, from: string, to: string): Observable<PurchaseRequest[]> {
-    const params = new HttpParams().set('branchId', branchId).set('from', from).set('to', to);
+  // branchId null = todas as filiais.
+  getReport(branchId: number | null, from: string, to: string): Observable<PurchaseRequest[]> {
+    let params = new HttpParams().set('from', from).set('to', to);
+    if (branchId) {
+      params = params.set('branchId', branchId);
+    }
     return this.http.get<PurchaseRequest[]>(`${this.baseUrl}/report`, { params });
   }
 
