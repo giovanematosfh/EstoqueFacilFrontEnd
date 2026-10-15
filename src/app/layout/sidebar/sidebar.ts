@@ -24,6 +24,7 @@ export class Sidebar {
     { label: 'Produtos', icon: 'produtos', route: '/produtos' },
     { label: 'Categorias', icon: 'categorias', route: '/categorias' },
     { label: 'Estoque', icon: 'estoque', route: '/estoque' },
+    { label: 'Compras (SC)', icon: 'compras', route: '/compras' },
     { label: 'Filiais', icon: 'building', route: '/filiais' },
     { label: 'Fornecedores', icon: 'fornecedores', route: '/fornecedores' },
     { label: 'Relatórios', icon: 'relatorios', route: '/relatorios' },

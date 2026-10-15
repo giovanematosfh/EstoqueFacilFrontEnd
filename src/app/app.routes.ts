@@ -40,6 +40,11 @@ export const routes: Routes = [
         title: 'Estoque',
       },
       {
+        path: 'compras',
+        loadComponent: () => import('./pages/compras/compras').then((m) => m.Compras),
+        title: 'Solicitações de Compra',
+      },
+      {
         path: 'filiais',
         loadComponent: () => import('./pages/filiais/filiais').then((m) => m.Filiais),
         title: 'Filiais',
