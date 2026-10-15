@@ -1,6 +1,6 @@
 <aside class="sidebar" [class.collapsed]="collapsed()">
   <div class="sidebar-brand">
-    <span class="brand-mark">EF</span>
+    <img class="brand-mark brand-logo" src="favicon.svg" alt="" />
     @if (!collapsed()) {
       <span class="brand-name">Estoque Fácil</span>
     }
@@ -14,6 +14,22 @@
           <span class="nav-label">{{ item.label }}</span>
         }
       </a>
+    }
+
+    @if (isSuperAdmin()) {
+      @if (!collapsed()) {
+        <span class="nav-section">Plataforma</span>
+      } @else {
+        <span class="nav-divider"></span>
+      }
+      @for (item of platformItems; track item.route) {
+        <a class="nav-item" [routerLink]="item.route" routerLinkActive="active" (click)="navigate.emit()">
+          <app-icon [name]="item.icon" [size]="20" />
+          @if (!collapsed()) {
+            <span class="nav-label">{{ item.label }}</span>
+          }
+        </a>
+      }
     }
   </nav>
 </aside>

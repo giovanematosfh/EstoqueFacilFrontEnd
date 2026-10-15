@@ -3,6 +3,10 @@ export interface AuthUser {
   name: string;
   email: string;
   role: string;
+  isSuperAdmin: boolean;
+  companyId: number;
+  companyName: string;
+  companyDueDate?: string | null;
 }
 
 export interface AuthResponse {
@@ -14,14 +18,4 @@ export interface AuthResponse {
 export interface LoginRequest {
   email: string;
   password: string;
-}
-
-export interface RegisterRequest {
-  fullName: string;
-  email: string;
-  password: string;
-}
-
-export interface RegisterResponse {
-  message: string;
 }

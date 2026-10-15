@@ -583,6 +583,418 @@ button {
   text-decoration: underline;
 }
 
+/* Login split layout: painel verde com cena de depósito à esquerda, formulário à direita */
+.login-page.auth-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  place-items: stretch;
+  padding: 0;
+  background: var(--color-surface);
+}
+
+.auth-hero {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 56px 64px 0;
+  color: #fff;
+  background: linear-gradient(135deg, var(--sidebar-bg) 0%, #0f3d27 40%, var(--color-primary-dark) 78%, var(--color-primary) 100%);
+  background-size: 200% 200%;
+  animation: hero-gradient 14s ease-in-out infinite;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 480px;
+  animation: auth-fade-up 0.8s ease-out both;
+}
+
+/* Logo (SVG) no lugar das iniciais */
+.brand-mark.brand-logo,
+.login-brand .brand-mark.brand-logo {
+  display: block;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
+}
+
+.hero-brand .brand-mark.brand-logo {
+  width: 44px;
+  height: 44px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+
+.hero-brand .brand-name {
+  color: #fff;
+  font-size: 20px;
+}
+
+.hero-title {
+  margin: 32px 0 14px;
+  font-size: 34px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.hero-text {
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.82);
+  margin: 0;
+}
+
+.hero-features {
+  list-style: none;
+  padding: 0;
+  margin: 26px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hero-features li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0;
+  animation: auth-fade-up 0.6s ease-out forwards;
+}
+
+.hero-features li:nth-child(1) { animation-delay: 0.35s; }
+.hero-features li:nth-child(2) { animation-delay: 0.5s; }
+.hero-features li:nth-child(3) { animation-delay: 0.65s; }
+
+.hero-features app-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.hero-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.4;
+  animation: hero-blob 16s ease-in-out infinite alternate;
+}
+
+.hero-blob-1 { width: 380px; height: 380px; background: #4ade80; top: -140px; right: -100px; }
+.hero-blob-2 { width: 300px; height: 300px; background: #22c55e; bottom: 80px; left: -120px; animation-delay: -8s; }
+
+/* Cena do depósito */
+.hero-scene {
+  position: relative;
+  z-index: 1;
+  margin: auto -64px 0;
+  height: 300px;
+  flex-shrink: 0;
+}
+
+.hero-shelves {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 56px;
+  width: 100%;
+  height: 170px;
+}
+
+.hero-floor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 58px;
+  background: linear-gradient(180deg, #0a2a1b 0%, #061c12 100%);
+  border-top: 3px solid rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.floor-line {
+  position: absolute;
+  left: 0;
+  top: 26px;
+  width: 200%;
+  height: 4px;
+  background: repeating-linear-gradient(90deg, rgba(250, 204, 21, 0.75) 0 30px, transparent 30px 60px);
+  animation: floor-move 3s linear infinite;
+}
+
+/* Esteira com caixas */
+.hero-conveyor {
+  position: absolute;
+  right: 3%;
+  bottom: 58px;
+  width: 46%;
+  height: 120px;
+}
+
+.conveyor-boxes {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 30px;
+  height: 80px;
+  overflow: hidden;
+}
+
+.c-box {
+  position: absolute;
+  bottom: 0;
+  left: -70px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #f5d9a8, #d6a96a);
+  box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.08);
+  animation: box-ride 8s linear infinite;
+}
+
+.c-box::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 38%;
+  height: 22%;
+  background: rgba(22, 163, 74, 0.8);
+}
+
+.c-box-1 { width: 54px; height: 46px; }
+.c-box-2 { width: 40px; height: 36px; animation-delay: -2s; }
+.c-box-3 { width: 60px; height: 52px; animation-delay: -4s; }
+.c-box-4 { width: 46px; height: 40px; animation-delay: -6s; }
+
+.conveyor-belt {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 18px;
+  height: 12px;
+  border-radius: 6px;
+  background: #1e293b;
+  overflow: hidden;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
+}
+
+.belt-stripes {
+  position: absolute;
+  inset: 0;
+  width: 200%;
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.25) 0 6px, transparent 6px 18px);
+  animation: belt-move 0.8s linear infinite;
+}
+
+.conveyor-legs {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  bottom: 0;
+  height: 18px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.conveyor-legs span {
+  width: 6px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Empilhadeira */
+.hero-forklift {
+  position: absolute;
+  width: min(300px, 40%);
+  left: 12%;
+  bottom: 8px;
+  overflow: visible;
+  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.35));
+  animation: forklift-drive 7s ease-in-out infinite;
+}
+
+.fk-load {
+  animation: fk-lift 7s ease-in-out infinite;
+}
+
+.hero-forklift .wheel {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wheel-roll 7s ease-in-out infinite;
+}
+
+.fk-beacon {
+  animation: beacon 1s ease-in-out infinite;
+}
+
+.speed-line {
+  position: absolute;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5));
+  animation: speed-line 1.6s linear infinite;
+}
+
+.speed-line-1 { width: 80px; bottom: 90px; left: 1%; }
+.speed-line-2 { width: 54px; bottom: 120px; left: 3%; animation-delay: -0.8s; }
+
+.auth-panel {
+  display: grid;
+  place-items: center;
+  padding: 32px 24px;
+  background:
+    radial-gradient(circle at 100% 0%, var(--color-primary-light) 0, transparent 40%),
+    var(--color-surface);
+}
+
+.auth-split .login-card {
+  max-width: 400px;
+  box-shadow: none;
+  padding: 0;
+  background: transparent;
+  animation: auth-slide-in 0.7s ease-out both;
+}
+
+.auth-panel-brand {
+  display: none;
+}
+
+.auth-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+}
+
+.auth-split .field input {
+  padding-top: 11px;
+  padding-bottom: 11px;
+}
+
+.auth-split .login-submit {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.auth-split .login-submit:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(22, 163, 74, 0.3);
+}
+
+@keyframes hero-gradient {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes hero-blob {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(-40px, 50px) scale(1.15); }
+}
+
+@keyframes floor-move {
+  from { transform: translateX(0); }
+  to { transform: translateX(-60px); }
+}
+
+@keyframes belt-move {
+  from { transform: translateX(-18px); }
+  to { transform: translateX(0); }
+}
+
+@keyframes box-ride {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(30vw + 70px)); }
+}
+
+/* empilhadeira: entra, para, ergue a carga, abaixa e volta */
+@keyframes forklift-drive {
+  0% { transform: translateX(-22%); }
+  25%, 75% { transform: translateX(0); }
+  100% { transform: translateX(-22%); }
+}
+
+@keyframes fk-lift {
+  0%, 30% { transform: translateY(0); }
+  45%, 60% { transform: translateY(-46px); }
+  72%, 100% { transform: translateY(0); }
+}
+
+@keyframes wheel-roll {
+  0% { transform: rotate(-200deg); }
+  25%, 75% { transform: rotate(0deg); }
+  100% { transform: rotate(-200deg); }
+}
+
+@keyframes beacon {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes speed-line {
+  from { opacity: 0; transform: translateX(0); }
+  30% { opacity: 1; }
+  to { opacity: 0; transform: translateX(-80px); }
+}
+
+@keyframes auth-fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes auth-slide-in {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@media (max-width: 900px) {
+  .login-page.auth-split {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-hero {
+    display: none;
+  }
+
+  .auth-panel {
+    padding: 24px 16px;
+    background: linear-gradient(180deg, var(--color-primary-light) 0%, var(--color-surface) 45%);
+  }
+
+  .auth-panel-brand {
+    display: flex;
+    margin-bottom: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-hero,
+  .hero-content,
+  .hero-features li,
+  .hero-blob,
+  .floor-line,
+  .c-box,
+  .belt-stripes,
+  .hero-forklift,
+  .fk-load,
+  .hero-forklift .wheel,
+  .fk-beacon,
+  .speed-line,
+  .auth-split .login-card {
+    animation: none;
+    opacity: 1;
+  }
+}
+
 .confirm-panel {
   display: flex;
   flex-direction: column;
@@ -607,4 +1019,220 @@ button {
 .confirm-panel .login-submit {
   margin-top: 8px;
   text-decoration: none;
+}
+
+/* Small helpers */
+.badge-warn {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.cell-sub {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.field-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.form-section-title {
+  margin: 8px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.card-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* Footer */
+.app-footer {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.app-footer strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.app-footer-auth {
+  justify-content: center;
+  text-align: center;
+  border-top: none;
+  background: transparent;
+  padding: 24px 0 0;
+}
+
+.auth-split .auth-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.auth-split .auth-panel .login-card {
+  margin: auto 0;
+}
+
+.auth-blocked {
+  margin-bottom: 8px;
+}
+
+@media (max-width: 900px) {
+  .app-footer {
+    padding: 12px 16px;
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+/* Product images */
+.col-thumb {
+  width: 56px;
+}
+
+.image-thumb {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  overflow: hidden;
+  cursor: zoom-in;
+}
+
+.image-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.image-thumb:hover {
+  border-color: var(--color-primary);
+}
+
+.image-thumb-lg {
+  width: 96px;
+  height: 96px;
+}
+
+.image-thumb-empty {
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
+.image-thumb-empty:hover {
+  border-color: var(--color-border);
+}
+
+.image-field {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.image-field-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.image-field-actions .field-hint,
+.image-field-actions .field-error {
+  flex-basis: 100%;
+}
+
+/* Lightbox */
+.image-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.85);
+  cursor: zoom-out;
+  animation: viewer-fade 0.15s ease-out;
+}
+
+.image-viewer figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  cursor: default;
+}
+
+.image-viewer img {
+  max-width: min(92vw, 1100px);
+  max-height: 82dvh;
+  object-fit: contain;
+  border-radius: var(--radius);
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.image-viewer figcaption {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.image-viewer-close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.image-viewer-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+@keyframes viewer-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

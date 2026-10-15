@@ -1,5 +1,6 @@
-import { Component, input, output } from '@angular/core';
+import { Component, inject, input, output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { AuthService } from '../../core/services/auth';
 import { Icon } from '../../shared/icon/icon';
 
 interface MenuItem {
@@ -23,9 +24,18 @@ export class Sidebar {
     { label: 'Produtos', icon: 'produtos', route: '/produtos' },
     { label: 'Categorias', icon: 'categorias', route: '/categorias' },
     { label: 'Estoque', icon: 'estoque', route: '/estoque' },
+    { label: 'Compras (SC)', icon: 'compras', route: '/compras' },
     { label: 'Filiais', icon: 'building', route: '/filiais' },
     { label: 'Fornecedores', icon: 'fornecedores', route: '/fornecedores' },
     { label: 'Relatórios', icon: 'relatorios', route: '/relatorios' },
     { label: 'Configurações', icon: 'configuracoes', route: '/configuracoes' },
   ];
+
+  // Visível só para o dono da plataforma (super admin).
+  readonly platformItems: MenuItem[] = [
+    { label: 'Empresas', icon: 'building', route: '/empresas' },
+    { label: 'Planos', icon: 'relatorios', route: '/planos' },
+  ];
+
+  readonly isSuperAdmin = inject(AuthService).isSuperAdmin;
 }

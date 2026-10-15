@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
@@ -19,7 +20,7 @@ type EstoqueTab = 'movements' | 'levels';
 
 @Component({
   selector: 'app-estoque',
-  imports: [ReactiveFormsModule, FormsModule, DatePipe, EmptyState, Icon, Pagination],
+  imports: [ReactiveFormsModule, FormsModule, DatePipe, RouterLink, EmptyState, Icon, Pagination],
   templateUrl: './estoque.html',
 })
 export class Estoque implements OnInit {
@@ -190,11 +191,9 @@ export class Estoque implements OnInit {
     });
   }
 
-  protected updatePurchaseRequestNumber(productStock: ProductStock, value: string): void {
-    this.saveProductStock(productStock, {
-      minimumQuantity: productStock.minimumQuantity,
-      purchaseRequestNumber: value || null,
-    });
+  // Quanto falta para voltar ao estoque mínimo (0 quando não precisa repor).
+  protected missingQuantity(productStock: ProductStock): number {
+    return Math.max(productStock.minimumQuantity - productStock.quantity, 0);
   }
 
   private saveProductStock(productStock: ProductStock, dto: UpdateProductStock): void {

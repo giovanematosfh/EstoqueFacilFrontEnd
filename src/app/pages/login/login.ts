@@ -1,12 +1,14 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth';
+import { Footer } from '../../layout/footer/footer';
+import { AuthHero } from '../../shared/auth-hero/auth-hero';
 import { Icon } from '../../shared/icon/icon';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink, Icon],
+  imports: [ReactiveFormsModule, Icon, AuthHero, Footer],
   templateUrl: './login.html',
 })
 export class Login {
@@ -17,6 +19,7 @@ export class Login {
 
   protected readonly submitting = signal(false);
   protected readonly errorMessage = signal('');
+  protected readonly blockedMessage = this.auth.blockedMessage;
 
   protected readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
@@ -31,6 +34,7 @@ export class Login {
 
     this.submitting.set(true);
     this.errorMessage.set('');
+    this.blockedMessage.set('');
 
     const { email, password } = this.form.getRawValue();
 

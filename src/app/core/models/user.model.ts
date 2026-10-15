@@ -7,6 +7,13 @@ export interface User {
   isActive: boolean;
 }
 
+export interface CreateUser {
+  fullName: string;
+  email: string;
+  password: string;
+  role: string;
+}
+
 export interface UpdateUser {
   fullName: string;
   email: string;

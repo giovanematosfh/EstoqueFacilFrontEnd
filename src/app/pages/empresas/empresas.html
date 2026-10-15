@@ -1,0 +1,186 @@
+<div class="page">
+  <div class="page-toolbar">
+    <header class="page-header">
+      <h1>Empresas</h1>
+      <p>Clientes que assinam o Estoque Fácil. Cada empresa enxerga apenas os próprios dados.</p>
+    </header>
+    <button class="btn btn-primary" type="button" (click)="openCreateForm()">
+      <app-icon name="plus" [size]="16" />
+      Nova Empresa
+    </button>
+  </div>
+
+  <div class="search-bar">
+    <app-icon name="search" [size]="16" />
+    <input
+      type="text"
+      placeholder="Buscar por nome, documento ou e-mail..."
+      [value]="searchTerm()"
+      (input)="onSearchInput($any($event.target).value)"
+    />
+  </div>
+
+  @if (showForm()) {
+    <div class="card form-card">
+      <h2>{{ editingId() ? 'Editar Empresa' : 'Nova Empresa' }}</h2>
+      <form [formGroup]="form" (ngSubmit)="submitForm()">
+        <div class="form-grid">
+          <div class="field">
+            <label for="name">Nome da empresa</label>
+            <input id="name" type="text" formControlName="name" />
+            @if (form.controls.name.invalid && form.controls.name.touched) {
+              <span class="field-error">Informe o nome da empresa.</span>
+            }
+          </div>
+
+          <div class="field">
+            <label for="document">CNPJ / CPF</label>
+            <input id="document" type="text" formControlName="document" />
+          </div>
+
+          <div class="field">
+            <label for="email">E-mail da empresa</label>
+            <input id="email" type="email" formControlName="email" />
+            @if (form.controls.email.invalid && form.controls.email.touched) {
+              <span class="field-error">Informe um e-mail válido.</span>
+            }
+          </div>
+
+          <div class="field">
+            <label for="phone">Telefone</label>
+            <input id="phone" type="text" formControlName="phone" />
+          </div>
+
+          <div class="field">
+            <label for="planId">Plano</label>
+            <select id="planId" formControlName="planId">
+              <option [ngValue]="null" disabled>Selecione um plano</option>
+              @for (plan of plans(); track plan.id) {
+                <option [ngValue]="plan.id" [disabled]="!plan.active">{{ planLabel(plan) }}</option>
+              }
+            </select>
+            @if (form.controls.planId.invalid && form.controls.planId.touched) {
+              <span class="field-error">Selecione um plano.</span>
+            }
+          </div>
+
+          <div class="field">
+            <label for="dueDate">Pago até (vencimento)</label>
+            <input id="dueDate" type="date" formControlName="dueDate" />
+            <span class="field-hint">Deixe vazio para não vencer. Após a data, o acesso é bloqueado.</span>
+          </div>
+
+          @if (editingId()) {
+            <label class="checkbox-field">
+              <input type="checkbox" formControlName="active" />
+              Acesso liberado
+            </label>
+          } @else {
+            <h3 class="form-section-title full-width">Administrador da empresa</h3>
+
+            <div class="field">
+              <label for="adminFullName">Nome</label>
+              <input id="adminFullName" type="text" formControlName="adminFullName" />
+              @if (form.controls.adminFullName.invalid && form.controls.adminFullName.touched) {
+                <span class="field-error">Informe o nome do administrador.</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="adminEmail">E-mail de acesso</label>
+              <input id="adminEmail" type="email" formControlName="adminEmail" autocomplete="off" />
+              @if (form.controls.adminEmail.invalid && form.controls.adminEmail.touched) {
+                <span class="field-error">Informe um e-mail válido.</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="adminPassword">Senha inicial</label>
+              <input id="adminPassword" type="password" formControlName="adminPassword" autocomplete="new-password" />
+              @if (form.controls.adminPassword.invalid && form.controls.adminPassword.touched) {
+                <span class="field-error">A senha deve ter ao menos 6 caracteres.</span>
+              }
+            </div>
+          }
+        </div>
+
+        @if (formError()) {
+          <div class="alert-error">{{ formError() }}</div>
+        }
+
+        <div class="form-actions">
+          <button class="btn btn-secondary" type="button" (click)="closeForm()">Cancelar</button>
+          <button class="btn btn-primary" type="submit" [disabled]="saving()">
+            {{ saving() ? 'Salvando...' : 'Salvar' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="card"><p class="loading-text">Carregando empresas...</p></div>
+  } @else if (companies().length === 0) {
+    <app-empty-state
+      icon="building"
+      [title]="searchTerm() ? 'Nenhuma empresa encontrada' : 'Nenhuma empresa cadastrada'"
+      description="Clique em Nova Empresa para cadastrar um cliente."
+    />
+  } @else {
+    <div class="card">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Empresa</th>
+            <th>Plano</th>
+            <th>Vencimento</th>
+            <th>Uso</th>
+            <th>Acesso</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (company of companies(); track company.id) {
+            @let due = dueStatus(company);
+            <tr>
+              <td>
+                <strong>{{ company.name }}</strong>
+                @if (company.document || company.email) {
+                  <div class="cell-sub">{{ company.document }} {{ company.email }}</div>
+                }
+              </td>
+              <td>{{ company.planName }}</td>
+              <td>
+                <div>{{ company.dueDate ? (company.dueDate | date: 'dd/MM/yyyy') : '—' }}</div>
+                <span class="badge" [class.badge-in]="due.tone === 'ok'" [class.badge-warn]="due.tone === 'warn'" [class.badge-out]="due.tone === 'late'">
+                  {{ due.label }}
+                </span>
+              </td>
+              <td class="cell-sub">
+                {{ company.userCount }} usuário(s) · {{ company.branchCount }} filial(is) · {{ company.productCount }} produto(s)
+              </td>
+              <td>
+                <span class="badge" [class.badge-in]="company.active" [class.badge-out]="!company.active">
+                  {{ company.active ? 'Liberado' : 'Bloqueado' }}
+                </span>
+              </td>
+              <td>
+                <div class="table-actions">
+                  <button class="btn btn-secondary btn-sm" type="button" (click)="renew(company)" title="Registrar pagamento (+30 dias)">
+                    +30 dias
+                  </button>
+                  <button class="icon-btn" type="button" (click)="toggleActive(company)" [attr.aria-label]="company.active ? 'Bloquear acesso' : 'Liberar acesso'" [title]="company.active ? 'Bloquear acesso' : 'Liberar acesso'">
+                    <app-icon name="lock" [size]="18" />
+                  </button>
+                  <button class="icon-btn" type="button" (click)="openEditForm(company)" aria-label="Editar empresa" title="Editar">
+                    <app-icon name="edit" [size]="18" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

@@ -1,0 +1,96 @@
+<span class="hero-blob hero-blob-1"></span>
+<span class="hero-blob hero-blob-2"></span>
+
+<div class="hero-content">
+  <div class="login-brand hero-brand">
+    <img class="brand-mark brand-logo" src="favicon.svg" alt="" />
+    <span class="brand-name">Estoque Fácil</span>
+  </div>
+
+  <h1 class="hero-title">{{ heading() }}</h1>
+  <p class="hero-text">{{ text() }}</p>
+
+  <ul class="hero-features">
+    <li><app-icon name="produtos" [size]="18" /> Cadastro completo de produtos</li>
+    <li><app-icon name="estoque" [size]="18" /> Entradas e saídas em tempo real</li>
+    <li><app-icon name="relatorios" [size]="18" /> Relatórios para decidir melhor</li>
+  </ul>
+</div>
+
+<!-- Cena: prateleiras ao fundo, esteira com caixas e empilhadeira -->
+<div class="hero-scene">
+  <svg class="hero-shelves" viewBox="0 0 800 170" preserveAspectRatio="xMidYMax slice">
+    <g fill="#fff" fill-opacity="0.08">
+      <!-- estantes -->
+      <rect x="20" y="10" width="8" height="160" />
+      <rect x="252" y="10" width="8" height="160" />
+      <rect x="20" y="58" width="240" height="6" />
+      <rect x="20" y="112" width="240" height="6" />
+      <rect x="540" y="10" width="8" height="160" />
+      <rect x="772" y="10" width="8" height="160" />
+      <rect x="540" y="58" width="240" height="6" />
+      <rect x="540" y="112" width="240" height="6" />
+    </g>
+    <g fill="#fff" fill-opacity="0.12">
+      <rect x="36" y="22" width="44" height="36" rx="3" /><rect x="88" y="30" width="30" height="28" rx="3" />
+      <rect x="160" y="18" width="52" height="40" rx="3" /><rect x="44" y="80" width="56" height="32" rx="3" />
+      <rect x="120" y="74" width="40" height="38" rx="3" /><rect x="190" y="86" width="50" height="26" rx="3" />
+      <rect x="556" y="26" width="48" height="32" rx="3" /><rect x="620" y="16" width="40" height="42" rx="3" />
+      <rect x="690" y="30" width="60" height="28" rx="3" /><rect x="560" y="78" width="36" height="34" rx="3" />
+      <rect x="616" y="84" width="58" height="28" rx="3" /><rect x="700" y="72" width="46" height="40" rx="3" />
+    </g>
+  </svg>
+
+  <!-- Esteira -->
+  <div class="hero-conveyor">
+    <div class="conveyor-boxes">
+      <span class="c-box c-box-1"></span>
+      <span class="c-box c-box-2"></span>
+      <span class="c-box c-box-3"></span>
+      <span class="c-box c-box-4"></span>
+    </div>
+    <div class="conveyor-belt"><span class="belt-stripes"></span></div>
+    <div class="conveyor-legs"><span></span><span></span><span></span><span></span></div>
+  </div>
+
+  <div class="hero-floor"><span class="floor-line"></span></div>
+
+  <!-- Empilhadeira -->
+  <svg class="hero-forklift" viewBox="0 0 300 210">
+    <defs>
+      <linearGradient id="fk-body" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#fbbf24" />
+        <stop offset="1" stop-color="#d97706" />
+      </linearGradient>
+      <linearGradient id="fk-crate" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f5d9a8" />
+        <stop offset="1" stop-color="#d6a96a" />
+      </linearGradient>
+    </defs>
+    <ellipse cx="150" cy="200" rx="140" ry="7" fill="#000" fill-opacity="0.25" />
+    <!-- carga (sobe e desce) -->
+    <g class="fk-load">
+      <rect x="196" y="150" width="96" height="7" rx="2" fill="#334155" />
+      <rect x="200" y="62" width="88" height="86" rx="5" fill="url(#fk-crate)" />
+      <rect x="200" y="96" width="88" height="14" fill="#16a34a" fill-opacity="0.85" />
+      <image href="favicon.svg" x="226" y="70" width="36" height="36" />
+      <text x="244" y="137" text-anchor="middle" font-family="Segoe UI, Roboto, Arial, sans-serif" font-size="11" font-weight="700" fill="#7c5a2b">FRÁGIL ↑↑</text>
+    </g>
+    <!-- mastro -->
+    <rect x="184" y="40" width="9" height="150" rx="2" fill="#475569" />
+    <rect x="174" y="40" width="7" height="150" rx="2" fill="#334155" />
+    <!-- cabine -->
+    <path d="M70 70 h70 l20 50 v50 H70 Z" fill="none" stroke="#cbd5e1" stroke-width="7" stroke-linejoin="round" />
+    <rect x="96" y="104" width="22" height="30" rx="4" fill="#1e293b" />
+    <path d="M30 120 h140 a10 10 0 0 1 10 10 v44 H30 a10 10 0 0 1 -10 -10 v-34 a10 10 0 0 1 10 -10 Z" fill="url(#fk-body)" />
+    <rect x="20" y="132" width="26" height="40" rx="6" fill="#92400e" fill-opacity="0.55" />
+    <rect x="120" y="134" width="40" height="6" rx="3" fill="#fff" fill-opacity="0.4" />
+    <circle cx="150" cy="78" r="5" fill="#fde68a" class="fk-beacon" />
+    <!-- rodas -->
+    <g class="wheel"><circle cx="58" cy="180" r="20" fill="#0f172a" /><circle cx="58" cy="180" r="8" fill="#cbd5e1" /><rect x="56" y="163" width="4" height="34" fill="#0f172a" fill-opacity="0.6" /></g>
+    <g class="wheel"><circle cx="150" cy="182" r="18" fill="#0f172a" /><circle cx="150" cy="182" r="7" fill="#cbd5e1" /><rect x="148" y="167" width="4" height="30" fill="#0f172a" fill-opacity="0.6" /></g>
+  </svg>
+
+  <span class="speed-line speed-line-1"></span>
+  <span class="speed-line speed-line-2"></span>
+</div>

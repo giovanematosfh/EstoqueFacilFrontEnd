@@ -2,20 +2,23 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
+import { Observable, Subject, debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
 import { CategoryService } from '../../core/services/category.service';
-import { ProductService } from '../../core/services/product.service';
+import { ProductService, imageSrc } from '../../core/services/product.service';
 import { Category } from '../../core/models/category.model';
 import { CreateProduct, Product, UpdateProduct } from '../../core/models/product.model';
 import { EmptyState } from '../../shared/empty-state/empty-state';
 import { Icon } from '../../shared/icon/icon';
+import { ImageViewer } from '../../shared/image-viewer/image-viewer';
 import { Pagination } from '../../shared/pagination/pagination';
 
 const PAGE_SIZE = 10;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 @Component({
   selector: 'app-produtos',
-  imports: [ReactiveFormsModule, CurrencyPipe, EmptyState, Icon, Pagination],
+  imports: [ReactiveFormsModule, CurrencyPipe, EmptyState, Icon, Pagination, ImageViewer],
   templateUrl: './produtos.html',
 })
 export class Produtos implements OnInit {
@@ -36,6 +39,16 @@ export class Produtos implements OnInit {
   protected readonly page = signal(1);
   protected readonly totalPages = signal(1);
   protected readonly totalCount = signal(0);
+
+  protected readonly imageSrc = imageSrc;
+
+  // Foto escolhida no formulário: arquivo novo, ou remoção da atual. Só é enviada ao salvar.
+  protected readonly imageFile = signal<File | null>(null);
+  protected readonly imagePreview = signal<string | null>(null);
+  protected readonly removeCurrentImage = signal(false);
+  protected readonly imageError = signal('');
+
+  protected readonly viewer = signal<{ src: string; alt: string } | null>(null);
 
   constructor() {
     this.searchInput$
@@ -72,6 +85,7 @@ export class Produtos implements OnInit {
       price: 0,
       active: true,
     });
+    this.resetImage(null);
     this.showForm.set(true);
   }
 
@@ -86,11 +100,49 @@ export class Produtos implements OnInit {
       price: product.price,
       active: product.active,
     });
+    this.resetImage(imageSrc(product.imageUrl));
     this.showForm.set(true);
   }
 
   protected closeForm(): void {
     this.showForm.set(false);
+    this.resetImage(null);
+  }
+
+  protected onImageSelected(input: HTMLInputElement): void {
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) {
+      return;
+    }
+
+    if (!IMAGE_TYPES.includes(file.type)) {
+      this.imageError.set('Formato inválido. Envie uma imagem JPG, PNG ou WEBP.');
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      this.imageError.set('A imagem deve ter no máximo 5 MB.');
+      return;
+    }
+
+    this.revokePreview();
+    this.imageError.set('');
+    this.imageFile.set(file);
+    this.removeCurrentImage.set(false);
+    this.imagePreview.set(URL.createObjectURL(file));
+  }
+
+  protected clearImage(): void {
+    this.revokePreview();
+    this.imageFile.set(null);
+    this.imagePreview.set(null);
+    this.removeCurrentImage.set(true);
+  }
+
+  protected openViewer(src: string | null, alt: string): void {
+    if (src) {
+      this.viewer.set({ src, alt });
+    }
   }
 
   protected onSearchInput(value: string): void {
@@ -118,10 +170,11 @@ export class Produtos implements OnInit {
       ? this.productService.update(editingId, this.toUpdateDto(raw))
       : this.productService.create(this.toCreateDto(raw));
 
-    request.subscribe({
+    request.pipe(switchMap((product) => this.saveImage(product.id))).subscribe({
       next: () => {
         this.saving.set(false);
         this.showForm.set(false);
+        this.resetImage(null);
         this.loadProducts();
       },
       error: (err) => {
@@ -140,6 +193,32 @@ export class Produtos implements OnInit {
       next: () => this.loadProducts(),
       error: (err) => alert(err.error?.mensagem ?? 'Não foi possível excluir o produto.'),
     });
+  }
+
+  private saveImage(productId: number): Observable<unknown> {
+    const file = this.imageFile();
+    if (file) {
+      return this.productService.uploadImage(productId, file);
+    }
+    if (this.removeCurrentImage() && this.editingId()) {
+      return this.productService.removeImage(productId);
+    }
+    return of(null);
+  }
+
+  private resetImage(currentSrc: string | null): void {
+    this.revokePreview();
+    this.imageFile.set(null);
+    this.imagePreview.set(currentSrc);
+    this.removeCurrentImage.set(false);
+    this.imageError.set('');
+  }
+
+  private revokePreview(): void {
+    const preview = this.imagePreview();
+    if (preview?.startsWith('blob:')) {
+      URL.revokeObjectURL(preview);
+    }
   }
 
   private loadProducts(): void {

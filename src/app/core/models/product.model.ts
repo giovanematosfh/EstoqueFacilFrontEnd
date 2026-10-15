@@ -9,6 +9,8 @@ export interface Product {
   updatedAt?: string | null;
   categoryId: number;
   categoryName?: string | null;
+  // Relativo à base da API (ex.: uploads/products/abc.jpg); use imageSrc() para montar a URL.
+  imageUrl?: string | null;
 }
 
 export interface CreateProduct {

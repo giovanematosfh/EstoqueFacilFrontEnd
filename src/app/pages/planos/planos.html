@@ -1,0 +1,118 @@
+<div class="page">
+  <div class="page-toolbar">
+    <header class="page-header">
+      <h1>Planos</h1>
+      <p>Defina preços e limites. As empresas não conseguem cadastrar além do limite do plano.</p>
+    </header>
+    <button class="btn btn-primary" type="button" (click)="openCreateForm()">
+      <app-icon name="plus" [size]="16" />
+      Novo Plano
+    </button>
+  </div>
+
+  @if (showForm()) {
+    <div class="card form-card">
+      <h2>{{ editingId() ? 'Editar Plano' : 'Novo Plano' }}</h2>
+      <form [formGroup]="form" (ngSubmit)="submitForm()">
+        <div class="form-grid">
+          <div class="field">
+            <label for="name">Nome</label>
+            <input id="name" type="text" formControlName="name" />
+            @if (form.controls.name.invalid && form.controls.name.touched) {
+              <span class="field-error">Informe o nome do plano.</span>
+            }
+          </div>
+
+          <div class="field">
+            <label for="price">Preço mensal (R$)</label>
+            <input id="price" type="number" step="0.01" min="0" formControlName="price" />
+            @if (form.controls.price.invalid && form.controls.price.touched) {
+              <span class="field-error">Informe um preço válido.</span>
+            }
+          </div>
+
+          <div class="field">
+            <label for="maxUsers">Máx. de usuários</label>
+            <input id="maxUsers" type="number" min="1" formControlName="maxUsers" placeholder="Ilimitado" />
+          </div>
+
+          <div class="field">
+            <label for="maxBranches">Máx. de filiais</label>
+            <input id="maxBranches" type="number" min="1" formControlName="maxBranches" placeholder="Ilimitado" />
+          </div>
+
+          <div class="field">
+            <label for="maxProducts">Máx. de produtos</label>
+            <input id="maxProducts" type="number" min="1" formControlName="maxProducts" placeholder="Ilimitado" />
+          </div>
+
+          <label class="checkbox-field">
+            <input type="checkbox" formControlName="active" />
+            Disponível para novas empresas
+          </label>
+        </div>
+
+        @if (formError()) {
+          <div class="alert-error">{{ formError() }}</div>
+        }
+
+        <div class="form-actions">
+          <button class="btn btn-secondary" type="button" (click)="closeForm()">Cancelar</button>
+          <button class="btn btn-primary" type="submit" [disabled]="saving()">
+            {{ saving() ? 'Salvando...' : 'Salvar' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="card"><p class="loading-text">Carregando planos...</p></div>
+  } @else if (plans().length === 0) {
+    <app-empty-state icon="relatorios" title="Nenhum plano cadastrado" description="Clique em Novo Plano para começar." />
+  } @else {
+    <div class="card">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Plano</th>
+            <th>Preço/mês</th>
+            <th>Usuários</th>
+            <th>Filiais</th>
+            <th>Produtos</th>
+            <th>Empresas</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (plan of plans(); track plan.id) {
+            <tr>
+              <td><strong>{{ plan.name }}</strong></td>
+              <td>{{ plan.price | currency: 'BRL' }}</td>
+              <td>{{ limit(plan.maxUsers) }}</td>
+              <td>{{ limit(plan.maxBranches) }}</td>
+              <td>{{ limit(plan.maxProducts) }}</td>
+              <td>{{ plan.companyCount }}</td>
+              <td>
+                <span class="badge" [class.badge-in]="plan.active" [class.badge-out]="!plan.active">
+                  {{ plan.active ? 'Ativo' : 'Inativo' }}
+                </span>
+              </td>
+              <td>
+                <div class="table-actions">
+                  <button class="icon-btn" type="button" (click)="openEditForm(plan)" aria-label="Editar plano">
+                    <app-icon name="edit" [size]="18" />
+                  </button>
+                  <button class="icon-btn" type="button" (click)="deletePlan(plan)" aria-label="Excluir plano">
+                    <app-icon name="delete" [size]="18" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

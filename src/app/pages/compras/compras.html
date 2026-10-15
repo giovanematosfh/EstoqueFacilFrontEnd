@@ -1,0 +1,321 @@
+<div class="page">
+  <div class="page-toolbar">
+    <header class="page-header">
+      <h1>Solicitações de Compra</h1>
+      <p>Registre as SCs dos itens em falta e acompanhe o histórico de reposição do estoque.</p>
+    </header>
+    <button class="btn btn-primary" type="button" [disabled]="!selectedBranchId()" (click)="openForm()">
+      <app-icon name="plus" [size]="16" />
+      Nova SC
+    </button>
+  </div>
+
+  <div class="branch-selector">
+    <label for="branchSelect">Filial</label>
+    <select
+      id="branchSelect"
+      [ngModel]="selectedBranchId()"
+      (ngModelChange)="onBranchChange($event)"
+      [disabled]="branches().length === 0"
+    >
+      @for (branch of branches(); track branch.id) {
+        <option [ngValue]="branch.id">{{ branch.name }}</option>
+      }
+    </select>
+  </div>
+
+  @if (branches().length === 0) {
+    <app-empty-state
+      icon="building"
+      title="Nenhuma filial cadastrada"
+      description="Cadastre uma filial em Filiais para começar a registrar solicitações de compra."
+    />
+  } @else {
+    @if (showForm()) {
+      <div class="card form-card">
+        <h2>Nova Solicitação de Compra</h2>
+        <form [formGroup]="form" (ngSubmit)="submitForm()">
+          <div class="form-grid">
+            <div class="field">
+              <label for="productId">Produto</label>
+              <select id="productId" formControlName="productId">
+                <option [ngValue]="null" disabled>Selecione um produto</option>
+                @for (ps of branchProductStocks(); track ps.productId) {
+                  <option [ngValue]="ps.productId">
+                    {{ ps.productName }} (atual: {{ ps.quantity }} / mín: {{ ps.minimumQuantity }})
+                  </option>
+                }
+              </select>
+              @if (form.controls.productId.invalid && form.controls.productId.touched) {
+                <span class="field-error">Selecione um produto.</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="number">Nº da SC</label>
+              <input id="number" type="text" maxlength="50" formControlName="number" placeholder="Ex.: 64154" />
+              @if (form.controls.number.invalid && form.controls.number.touched) {
+                <span class="field-error">Informe o número da SC.</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="quantity">Quantidade solicitada</label>
+              <input id="quantity" type="number" min="1" formControlName="quantity" />
+              @if (form.controls.quantity.invalid && form.controls.quantity.touched) {
+                <span class="field-error">Informe uma quantidade válida.</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="requestDate">Data da SC</label>
+              <input id="requestDate" type="date" formControlName="requestDate" />
+              @if (form.controls.requestDate.invalid && form.controls.requestDate.touched) {
+                <span class="field-error">Informe a data da SC.</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="requesterName">Solicitante</label>
+              <input id="requesterName" type="text" formControlName="requesterName" placeholder="Opcional" />
+            </div>
+
+            <div class="field full-width">
+              <label for="notes">Observação</label>
+              <input id="notes" type="text" maxlength="500" formControlName="notes" placeholder="Opcional" />
+            </div>
+          </div>
+
+          @if (formError()) {
+            <div class="alert-error">{{ formError() }}</div>
+          }
+
+          <div class="form-actions">
+            <button class="btn btn-secondary" type="button" (click)="closeForm()">Cancelar</button>
+            <button class="btn btn-primary" type="submit" [disabled]="saving()">
+              {{ saving() ? 'Salvando...' : 'Salvar SC' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    }
+
+    @if (receiving(); as request) {
+      <div class="card form-card">
+        <h2>Receber SC nº {{ request.number }}</h2>
+        <p class="cell-sub">
+          {{ request.productName }} — solicitado {{ request.quantity }} em
+          {{ request.requestDate | date: 'dd/MM/yyyy' : 'UTC' }}. A quantidade recebida entra no estoque.
+        </p>
+        <form [formGroup]="receiveForm" (ngSubmit)="submitReceive()">
+          <div class="form-grid">
+            <div class="field">
+              <label for="receiveQuantity">Quantidade recebida</label>
+              <input id="receiveQuantity" type="number" min="1" formControlName="quantity" />
+              @if (receiveForm.controls.quantity.invalid && receiveForm.controls.quantity.touched) {
+                <span class="field-error">Informe uma quantidade válida.</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="receivedDate">Data de recebimento</label>
+              <input id="receivedDate" type="date" formControlName="receivedDate" />
+            </div>
+          </div>
+
+          @if (receiveError()) {
+            <div class="alert-error">{{ receiveError() }}</div>
+          }
+
+          <div class="form-actions">
+            <button class="btn btn-secondary" type="button" (click)="closeReceive()">Cancelar</button>
+            <button class="btn btn-primary" type="submit" [disabled]="actionFor() === request.id">
+              {{ actionFor() === request.id ? 'Registrando...' : 'Confirmar recebimento' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    }
+
+    <div class="report-tabs">
+      <button class="report-tab" type="button" [class.active]="activeTab() === 'history'" (click)="selectTab('history')">
+        Histórico
+      </button>
+      <button class="report-tab" type="button" [class.active]="activeTab() === 'monthly'" (click)="selectTab('monthly')">
+        Visão mensal
+      </button>
+    </div>
+
+    @if (activeTab() === 'history') {
+      <div class="page-toolbar">
+        <div class="search-bar">
+          <app-icon name="search" [size]="16" />
+          <input
+            type="text"
+            placeholder="Buscar por nº da SC, produto ou SKU..."
+            [value]="searchTerm()"
+            (input)="onSearchInput($any($event.target).value)"
+          />
+        </div>
+        <div class="branch-selector">
+          <label for="statusFilter">Status</label>
+          <select id="statusFilter" [ngModel]="statusFilter()" (ngModelChange)="onStatusChange($event)">
+            <option [ngValue]="null">Todos</option>
+            <option [ngValue]="PurchaseRequestStatus.Open">Aberta</option>
+            <option [ngValue]="PurchaseRequestStatus.Received">Recebida</option>
+            <option [ngValue]="PurchaseRequestStatus.Canceled">Cancelada</option>
+          </select>
+        </div>
+      </div>
+
+      @if (loading()) {
+        <div class="card"><p class="loading-text">Carregando solicitações...</p></div>
+      } @else if (requests().length === 0 && (searchTerm() || statusFilter())) {
+        <app-empty-state
+          icon="relatorios"
+          title="Nenhuma solicitação encontrada"
+          description="Nenhuma SC corresponde aos filtros aplicados."
+        />
+      } @else if (requests().length === 0) {
+        <app-empty-state
+          icon="relatorios"
+          title="Nenhuma solicitação de compra registrada"
+          description="Clique em Nova SC ou use o botão Solicitar em Estoque › Níveis de Estoque para registrar a primeira."
+        />
+      } @else {
+        <div class="card">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Nº SC</th>
+                <th>Produto</th>
+                <th>Qtd</th>
+                <th>Data da SC</th>
+                <th>Status</th>
+                <th>Recebimento</th>
+                <th>Solicitante</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (request of requests(); track request.id) {
+                <tr>
+                  <td><strong>{{ request.number }}</strong></td>
+                  <td>
+                    {{ request.productName }}
+                    @if (request.notes) {
+                      <div class="cell-sub">{{ request.notes }}</div>
+                    }
+                  </td>
+                  <td>{{ request.quantity }}</td>
+                  <td>{{ request.requestDate | date: 'dd/MM/yyyy' : 'UTC' }}</td>
+                  <td>
+                    <span
+                      class="badge"
+                      [class.badge-warn]="request.status === 'Open'"
+                      [class.badge-in]="request.status === 'Received'"
+                      [class.badge-out]="request.status === 'Canceled'"
+                    >
+                      {{ STATUS_LABELS[request.status] }}
+                    </span>
+                  </td>
+                  <td>
+                    @if (request.receivedDate) {
+                      {{ request.receivedDate | date: 'dd/MM/yyyy' : 'UTC' }}
+                      <div class="cell-sub">{{ request.receivedQuantity }} recebido(s)</div>
+                    }
+                  </td>
+                  <td>{{ request.requesterName }}</td>
+                  <td>
+                    @if (request.status === 'Open') {
+                      <div class="table-actions">
+                        <button
+                          class="btn btn-primary btn-sm"
+                          type="button"
+                          [disabled]="actionFor() === request.id"
+                          (click)="openReceive(request)"
+                        >
+                          Receber
+                        </button>
+                        <button
+                          class="icon-btn"
+                          type="button"
+                          title="Cancelar SC"
+                          [disabled]="actionFor() === request.id"
+                          (click)="cancelRequest(request)"
+                        >
+                          <app-icon name="delete" [size]="16" />
+                        </button>
+                      </div>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          <app-pagination
+            [page]="page()"
+            [totalPages]="totalPages()"
+            [totalCount]="totalCount()"
+            (pageChange)="onPageChange($event)"
+          />
+        </div>
+      }
+    } @else {
+      <div class="page-toolbar">
+        <div class="table-actions">
+          <button class="btn btn-secondary btn-sm" type="button" (click)="changeYear(-1)">‹</button>
+          <strong>{{ year() }}</strong>
+          <button class="btn btn-secondary btn-sm" type="button" (click)="changeYear(1)">›</button>
+        </div>
+        <button class="btn btn-secondary" type="button" [disabled]="monthlyRows().length === 0" (click)="exportMonthly()">
+          <app-icon name="download" [size]="16" />
+          Exportar Excel
+        </button>
+      </div>
+
+      @if (monthlyLoading()) {
+        <div class="card"><p class="loading-text">Carregando visão mensal...</p></div>
+      } @else if (monthlyRows().length === 0) {
+        <app-empty-state
+          icon="relatorios"
+          title="Nenhuma SC em {{ year() }}"
+          description="As solicitações de compra do ano aparecem aqui, mês a mês, por produto."
+        />
+      } @else {
+        <div class="card" style="overflow-x: auto">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Produto</th>
+                @for (month of MONTHS; track month) {
+                  <th>{{ month.substring(0, 3) }}</th>
+                }
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of monthlyRows(); track row.productId) {
+                <tr>
+                  <td>
+                    {{ row.productName }}
+                    <div class="cell-sub">{{ row.sku }}</div>
+                  </td>
+                  @for (cell of row.months; track $index) {
+                    <td>
+                      @if (cell.quantity) {
+                        <strong>{{ cell.quantity }}</strong>
+                        <div class="cell-sub">SC {{ cell.numbers.join(', ') }}</div>
+                      }
+                    </td>
+                  }
+                  <td><strong>{{ row.total }}</strong></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  }
+</div>

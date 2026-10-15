@@ -7,7 +7,7 @@
   @if (isAdmin()) {
     @if (showEditForm()) {
       <div class="card form-card">
-        <h2>Editar Usuário</h2>
+        <h2>{{ editingUser() ? 'Editar Usuário' : 'Novo Usuário' }}</h2>
         <form [formGroup]="form" (ngSubmit)="submitEditForm()">
           <div class="form-grid">
             <div class="field">
@@ -25,6 +25,24 @@
                 <span class="field-error">Informe um e-mail válido.</span>
               }
             </div>
+
+            @if (!editingUser()) {
+              <div class="field">
+                <label for="password">Senha inicial</label>
+                <input id="password" type="password" formControlName="password" autocomplete="new-password" />
+                @if (form.controls.password.invalid && form.controls.password.touched) {
+                  <span class="field-error">A senha deve ter ao menos 6 caracteres.</span>
+                }
+              </div>
+
+              <div class="field">
+                <label for="role">Papel</label>
+                <select id="role" formControlName="role">
+                  <option value="User">Usuário</option>
+                  <option value="Admin">Administrador</option>
+                </select>
+              </div>
+            }
           </div>
 
           @if (formError()) {
@@ -42,9 +60,15 @@
     }
 
     <div class="card">
-      <div class="card-header">
-        <h2>Usuários</h2>
-        <p>Edite, ative/desative ou remova o acesso de usuários ao sistema.</p>
+      <div class="card-header card-header-actions">
+        <div>
+          <h2>Usuários</h2>
+          <p>Cadastre, edite, ative/desative ou remova o acesso de usuários da sua empresa.</p>
+        </div>
+        <button class="btn btn-primary" type="button" (click)="openCreateForm()">
+          <app-icon name="plus" [size]="16" />
+          Novo Usuário
+        </button>
       </div>
 
       @if (errorMessage()) {

@@ -67,6 +67,34 @@
             <input id="description" type="text" formControlName="description" />
           </div>
 
+          <div class="field full-width">
+            <span class="field-label">Foto do produto</span>
+            <div class="image-field">
+              @if (imagePreview(); as preview) {
+                <button class="image-thumb image-thumb-lg" type="button" (click)="openViewer(preview, form.controls.name.value)" title="Ver em tamanho maior">
+                  <img [src]="preview" alt="Prévia da foto do produto" />
+                </button>
+              } @else {
+                <div class="image-thumb image-thumb-lg image-thumb-empty">
+                  <app-icon name="produtos" [size]="28" />
+                </div>
+              }
+              <div class="image-field-actions">
+                <label class="btn btn-secondary btn-sm">
+                  {{ imagePreview() ? 'Trocar imagem' : 'Escolher imagem' }}
+                  <input type="file" accept="image/jpeg,image/png,image/webp" hidden (change)="onImageSelected($any($event.target))" />
+                </label>
+                @if (imagePreview()) {
+                  <button class="btn btn-secondary btn-sm" type="button" (click)="clearImage()">Remover</button>
+                }
+                <span class="field-hint">JPG, PNG ou WEBP de até 5 MB.</span>
+                @if (imageError()) {
+                  <span class="field-error">{{ imageError() }}</span>
+                }
+              </div>
+            </div>
+          </div>
+
           @if (editingId()) {
             <label class="checkbox-field">
               <input type="checkbox" formControlName="active" />
@@ -108,6 +136,7 @@
       <table class="table">
         <thead>
           <tr>
+            <th class="col-thumb"></th>
             <th>Nome</th>
             <th>SKU</th>
             <th>Categoria</th>
@@ -119,6 +148,17 @@
         <tbody>
           @for (product of products(); track product.id) {
             <tr>
+              <td class="col-thumb">
+                @if (imageSrc(product.imageUrl); as src) {
+                  <button class="image-thumb" type="button" (click)="openViewer(src, product.name)" [attr.aria-label]="'Ver foto de ' + product.name">
+                    <img [src]="src" [alt]="product.name" loading="lazy" />
+                  </button>
+                } @else {
+                  <div class="image-thumb image-thumb-empty" aria-hidden="true">
+                    <app-icon name="produtos" [size]="18" />
+                  </div>
+                }
+              </td>
               <td>{{ product.name }}</td>
               <td>{{ product.sku }}</td>
               <td>{{ product.categoryName }}</td>
@@ -150,4 +190,6 @@
       />
     </div>
   }
+
+  <app-image-viewer [src]="viewer()?.src ?? null" [alt]="viewer()?.alt ?? ''" (closed)="viewer.set(null)" />
 </div>

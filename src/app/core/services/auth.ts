@@ -3,13 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
 import { Observable, tap } from 'rxjs';
 import { API_BASE_URL } from '../config/api.config';
-import {
-  AuthResponse,
-  AuthUser,
-  LoginRequest,
-  RegisterRequest,
-  RegisterResponse,
-} from '../models/auth.model';
+import { AuthResponse, AuthUser, LoginRequest } from '../models/auth.model';
 
 const TOKEN_KEY = 'estoque-facil.token';
 const USER_KEY = 'estoque-facil.user';
@@ -26,24 +20,15 @@ export class AuthService {
     return token !== null && !this.isExpired(token);
   });
   readonly isAdmin = computed(() => this.currentUser()?.role === 'Admin');
+  readonly isSuperAdmin = computed(() => this.currentUser()?.isSuperAdmin === true);
+
+  // Motivo do último bloqueio da empresa (assinatura vencida/desativada), exibido no login.
+  readonly blockedMessage = signal('');
 
   login(email: string, password: string): Observable<AuthResponse> {
     const body: LoginRequest = { email, password };
     return this.http
       .post<AuthResponse>(`${API_BASE_URL}/auth/login`, body)
-      .pipe(tap((response) => this.storeSession(response)));
-  }
-
-  // TODO: reativar quando o SMTP estiver configurado corretamente (registro passa a exigir confirmação de e-mail).
-  // register(fullName: string, email: string, password: string): Observable<RegisterResponse> {
-  //   const body: RegisterRequest = { fullName, email, password };
-  //   return this.http.post<RegisterResponse>(`${API_BASE_URL}/auth/register`, body);
-  // }
-
-  register(fullName: string, email: string, password: string): Observable<AuthResponse> {
-    const body: RegisterRequest = { fullName, email, password };
-    return this.http
-      .post<AuthResponse>(`${API_BASE_URL}/auth/register`, body)
       .pipe(tap((response) => this.storeSession(response)));
   }
 

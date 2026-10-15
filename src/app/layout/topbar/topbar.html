@@ -11,7 +11,10 @@
     <div class="user-avatar">
       <app-icon name="user" [size]="18" />
     </div>
-    <span class="user-name">{{ userName()?.name }}</span>
+    <div class="user-info">
+      <span class="user-name">{{ userName()?.name }}</span>
+      <span class="user-company">{{ userName()?.companyName }}</span>
+    </div>
     <button class="icon-btn" type="button" (click)="logout()" aria-label="Sair" title="Sair">
       <app-icon name="logout" [size]="20" />
     </button>

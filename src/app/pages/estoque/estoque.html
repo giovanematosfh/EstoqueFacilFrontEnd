@@ -220,7 +220,8 @@
                 <th>Quantidade</th>
                 <th>Mínimo</th>
                 <th>Status</th>
-                <th>Nº Solicitação de Compra</th>
+                <th>Qtd a solicitar</th>
+                <th>SC em aberto</th>
               </tr>
             </thead>
             <tbody>
@@ -246,16 +247,25 @@
                       <span class="badge badge-in">ok</span>
                     }
                   </td>
+                  <td>{{ missingQuantity(ps) }}</td>
                   <td>
-                    <input
-                      type="text"
-                      maxlength="50"
-                      class="inline-text-input"
-                      placeholder="Opcional"
-                      [value]="ps.purchaseRequestNumber"
-                      [disabled]="savingFieldFor() === ps.productId"
-                      (change)="updatePurchaseRequestNumber(ps, $any($event.target).value)"
-                    />
+                    @if (ps.purchaseRequestNumber) {
+                      <a
+                        class="badge badge-warn"
+                        routerLink="/compras"
+                        title="Ver histórico de SCs"
+                      >
+                        SC {{ ps.purchaseRequestNumber }}
+                      </a>
+                    } @else if (ps.lowStock) {
+                      <a
+                        class="btn btn-primary btn-sm"
+                        routerLink="/compras"
+                        [queryParams]="{ branchId: ps.branchId, productId: ps.productId, quantity: missingQuantity(ps) || null }"
+                      >
+                        Solicitar
+                      </a>
+                    }
                   </td>
                 </tr>
               }

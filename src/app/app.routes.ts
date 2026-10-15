@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, guestGuard } from './core/guards/auth-guard';
+import { authGuard, guestGuard, superAdminGuard } from './core/guards/auth-guard';
 
 export const routes: Routes = [
   {
@@ -7,12 +7,6 @@ export const routes: Routes = [
     canActivate: [guestGuard],
     loadComponent: () => import('./pages/login/login').then((m) => m.Login),
     title: 'Entrar',
-  },
-  {
-    path: 'register',
-    canActivate: [guestGuard],
-    loadComponent: () => import('./pages/register/register').then((m) => m.Register),
-    title: 'Criar conta',
   },
   {
     path: 'confirm-email',
@@ -46,6 +40,11 @@ export const routes: Routes = [
         title: 'Estoque',
       },
       {
+        path: 'compras',
+        loadComponent: () => import('./pages/compras/compras').then((m) => m.Compras),
+        title: 'Solicitações de Compra',
+      },
+      {
         path: 'filiais',
         loadComponent: () => import('./pages/filiais/filiais').then((m) => m.Filiais),
         title: 'Filiais',
@@ -64,6 +63,18 @@ export const routes: Routes = [
         path: 'configuracoes',
         loadComponent: () => import('./pages/configuracoes/configuracoes').then((m) => m.Configuracoes),
         title: 'Configurações',
+      },
+      {
+        path: 'empresas',
+        canActivate: [superAdminGuard],
+        loadComponent: () => import('./pages/empresas/empresas').then((m) => m.Empresas),
+        title: 'Empresas',
+      },
+      {
+        path: 'planos',
+        canActivate: [superAdminGuard],
+        loadComponent: () => import('./pages/planos/planos').then((m) => m.Planos),
+        title: 'Planos',
       },
     ],
   },
