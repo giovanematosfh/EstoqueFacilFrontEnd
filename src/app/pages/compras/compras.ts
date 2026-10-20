@@ -1,15 +1,20 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { FormArray, FormBuilder, FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Subject, debounceTime, distinctUntilChanged, startWith } from 'rxjs';
 import { BranchService } from '../../core/services/branch.service';
 import { ProductStockService } from '../../core/services/product-stock.service';
 import { PurchaseRequestService } from '../../core/services/purchase-request.service';
 import { Branch } from '../../core/models/branch.model';
 import { ProductStock } from '../../core/models/product-stock.model';
-import { PurchaseRequest, PurchaseRequestStatus } from '../../core/models/purchase-request.model';
+import {
+  PurchaseRequest,
+  PurchaseRequestLine,
+  PurchaseRequestStatus,
+  PurchaseRequestStatusName,
+} from '../../core/models/purchase-request.model';
 import { ReportColumn, exportToExcel } from '../../core/utils/export.util';
 import { EmptyState } from '../../shared/empty-state/empty-state';
 import { Icon } from '../../shared/icon/icon';
@@ -22,13 +27,31 @@ const MONTHS = [
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
 ];
 
-const STATUS_LABELS: Record<PurchaseRequest['status'], string> = {
+const STATUS_LABELS: Record<PurchaseRequestStatusName, string> = {
   Open: 'Aberta',
   Received: 'Recebida',
   Canceled: 'Cancelada',
 };
 
+const ITEM_STATUS_LABELS: Record<PurchaseRequestStatusName, string> = {
+  Open: 'pendente',
+  Received: 'recebido',
+  Canceled: 'cancelado',
+};
+
 type ComprasTab = 'history' | 'monthly';
+
+type ItemForm = FormGroup<{
+  productId: FormControl<number | null>;
+  quantity: FormControl<number>;
+}>;
+
+type ReceiveItemForm = FormGroup<{
+  itemId: FormControl<number>;
+  productName: FormControl<string>;
+  requested: FormControl<number>;
+  quantity: FormControl<number>;
+}>;
 
 interface MonthCell {
   quantity: number;
@@ -67,6 +90,7 @@ export class Compras implements OnInit {
   protected readonly PurchaseRequestStatus = PurchaseRequestStatus;
   protected readonly MONTHS = MONTHS;
   protected readonly STATUS_LABELS = STATUS_LABELS;
+  protected readonly ITEM_STATUS_LABELS = ITEM_STATUS_LABELS;
 
   protected readonly activeTab = signal<ComprasTab>('history');
   protected readonly branches = signal<Branch[]>([]);
@@ -82,7 +106,7 @@ export class Compras implements OnInit {
   protected readonly totalCount = signal(0);
 
   protected readonly year = signal(new Date().getFullYear());
-  protected readonly yearRequests = signal<PurchaseRequest[]>([]);
+  protected readonly yearRequests = signal<PurchaseRequestLine[]>([]);
   protected readonly monthlyLoading = signal(false);
   protected readonly monthlyRows = computed(() => this.buildMonthlyRows(this.yearRequests()));
 
@@ -95,18 +119,29 @@ export class Compras implements OnInit {
   protected readonly actionFor = signal<number | null>(null);
 
   protected readonly form = this.fb.nonNullable.group({
-    productId: this.fb.control<number | null>(null, Validators.required),
     number: ['', [Validators.required, Validators.maxLength(50)]],
-    quantity: [1, [Validators.required, Validators.min(1)]],
     requestDate: [today(), Validators.required],
     requesterName: [''],
     notes: [''],
+    items: this.fb.array<ItemForm>([]),
   });
 
   protected readonly receiveForm = this.fb.nonNullable.group({
-    quantity: [1, [Validators.required, Validators.min(1)]],
     receivedDate: [today(), Validators.required],
+    items: this.fb.array<ReceiveItemForm>([]),
   });
+
+  // Produtos já escolhidos no formulário, para não repetir o mesmo produto em dois itens.
+  private readonly itemsValue = toSignal(
+    this.form.controls.items.valueChanges.pipe(startWith(this.form.controls.items.value)),
+    { initialValue: [] },
+  );
+  protected readonly selectedProductIds = computed(
+    () => new Set(this.itemsValue().map((item) => item.productId).filter((id): id is number => !!id)),
+  );
+  protected readonly lowStockToAdd = computed(() =>
+    this.branchProductStocks().filter((ps) => ps.lowStock && !this.selectedProductIds().has(ps.productId)),
+  );
 
   constructor() {
     this.searchInput$
@@ -116,18 +151,18 @@ export class Compras implements OnInit {
         this.page.set(1);
         this.loadRequests();
       });
-
-    // Ao escolher o produto, sugere a quantidade que falta para chegar no mínimo.
-    this.form.controls.productId.valueChanges.pipe(takeUntilDestroyed()).subscribe((productId) => {
-      const stock = this.branchProductStocks().find((ps) => ps.productId === productId);
-      if (stock) {
-        this.form.controls.quantity.setValue(this.missingQuantity(stock));
-      }
-    });
   }
 
   ngOnInit(): void {
     this.loadBranches();
+  }
+
+  protected get itemForms(): FormArray<ItemForm> {
+    return this.form.controls.items;
+  }
+
+  protected get receiveItemForms(): FormArray<ReceiveItemForm> {
+    return this.receiveForm.controls.items;
   }
 
   protected selectTab(tab: ComprasTab): void {
@@ -174,23 +209,16 @@ export class Compras implements OnInit {
     return Math.max(stock.minimumQuantity - stock.quantity, 1);
   }
 
+  protected stockLabel(stock: ProductStock): string {
+    return `${stock.productName} (atual: ${stock.quantity} / mín: ${stock.minimumQuantity})`;
+  }
+
   protected openForm(productId: number | null = null, quantity: number | null = null): void {
     this.formError.set('');
     this.receiving.set(null);
-    this.form.reset({
-      productId: null,
-      number: '',
-      quantity: 1,
-      requestDate: today(),
-      requesterName: '',
-      notes: '',
-    });
-    if (productId) {
-      this.form.controls.productId.setValue(productId);
-    }
-    if (quantity) {
-      this.form.controls.quantity.setValue(quantity);
-    }
+    this.form.reset({ number: '', requestDate: today(), requesterName: '', notes: '' });
+    this.itemForms.clear();
+    this.addItem(productId, quantity);
     this.showForm.set(true);
   }
 
@@ -198,7 +226,47 @@ export class Compras implements OnInit {
     this.showForm.set(false);
   }
 
+  protected addItem(productId: number | null = null, quantity: number | null = null): void {
+    const group: ItemForm = this.fb.group({
+      productId: this.fb.control<number | null>(productId, Validators.required),
+      quantity: this.fb.nonNullable.control(quantity ?? this.suggestedQuantity(productId), [Validators.required, Validators.min(1)]),
+    });
+
+    // Ao escolher o produto, sugere a quantidade que falta para chegar no mínimo.
+    group.controls.productId.valueChanges.subscribe((id) => {
+      group.controls.quantity.setValue(this.suggestedQuantity(id));
+    });
+
+    this.itemForms.push(group);
+  }
+
+  protected removeItem(index: number): void {
+    this.itemForms.removeAt(index);
+  }
+
+  // Preenche a SC com todos os itens da filial que estão abaixo do estoque de segurança.
+  protected addLowStockItems(): void {
+    // Remove a linha vazia inicial, se houver, antes de adicionar.
+    for (let i = this.itemForms.length - 1; i >= 0; i--) {
+      if (!this.itemForms.at(i).controls.productId.value) {
+        this.itemForms.removeAt(i);
+      }
+    }
+    for (const stock of this.lowStockToAdd()) {
+      this.addItem(stock.productId, this.missingQuantity(stock));
+    }
+  }
+
+  // O produto pode ser escolhido no item atual, mas não em outro item da mesma SC.
+  protected isTakenElsewhere(productId: number, index: number): boolean {
+    return this.selectedProductIds().has(productId) && this.itemForms.at(index).controls.productId.value !== productId;
+  }
+
   protected submitForm(): void {
+    if (this.itemForms.length === 0) {
+      this.formError.set('Adicione ao menos um produto à SC.');
+      return;
+    }
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -216,13 +284,12 @@ export class Compras implements OnInit {
 
     this.purchaseRequestService
       .create({
-        productId: raw.productId!,
         branchId,
         number: raw.number.trim(),
-        quantity: raw.quantity,
         requestDate: raw.requestDate,
         requesterName: raw.requesterName || null,
         notes: raw.notes || null,
+        items: raw.items.map((item) => ({ productId: item.productId!, quantity: item.quantity })),
       })
       .subscribe({
         next: () => {
@@ -232,7 +299,7 @@ export class Compras implements OnInit {
         },
         error: (err) => {
           this.saving.set(false);
-          this.formError.set(err.error?.mensagem ?? 'Não foi possível salvar a solicitação de compra.');
+          this.formError.set(this.errorMessage(err, 'Não foi possível salvar a solicitação de compra.'));
         },
       });
   }
@@ -240,7 +307,21 @@ export class Compras implements OnInit {
   protected openReceive(request: PurchaseRequest): void {
     this.showForm.set(false);
     this.receiveError.set('');
-    this.receiveForm.reset({ quantity: request.quantity, receivedDate: today() });
+    this.receiveForm.reset({ receivedDate: today() });
+    this.receiveItemForms.clear();
+
+    for (const item of request.items.filter((i) => i.status === 'Open')) {
+      this.receiveItemForms.push(
+        this.fb.nonNullable.group({
+          itemId: [item.id],
+          productName: [item.productName],
+          requested: [item.quantity],
+          // Já vem com o que foi pedido; 0 deixa o item pendente para depois.
+          quantity: [item.quantity, [Validators.required, Validators.min(0)]],
+        }),
+      );
+    }
+
     this.receiving.set(request);
   }
 
@@ -259,10 +340,17 @@ export class Compras implements OnInit {
       return;
     }
 
+    const raw = this.receiveForm.getRawValue();
+    const items = raw.items.map((item) => ({ itemId: item.itemId, quantity: item.quantity }));
+    if (!items.some((item) => item.quantity > 0)) {
+      this.receiveError.set('Informe a quantidade recebida de ao menos um item.');
+      return;
+    }
+
     this.actionFor.set(request.id);
     this.receiveError.set('');
 
-    this.purchaseRequestService.receive(request.id, this.receiveForm.getRawValue()).subscribe({
+    this.purchaseRequestService.receive(request.id, { receivedDate: raw.receivedDate, items }).subscribe({
       next: () => {
         this.actionFor.set(null);
         this.receiving.set(null);
@@ -270,13 +358,16 @@ export class Compras implements OnInit {
       },
       error: (err) => {
         this.actionFor.set(null);
-        this.receiveError.set(err.error?.mensagem ?? 'Não foi possível registrar o recebimento.');
+        this.receiveError.set(this.errorMessage(err, 'Não foi possível registrar o recebimento.'));
       },
     });
   }
 
   protected cancelRequest(request: PurchaseRequest): void {
-    if (!confirm(`Cancelar a SC nº ${request.number} de ${request.productName}?`)) {
+    const pending = this.pendingCount(request);
+    const received = request.items.length - pending;
+    const detail = received > 0 ? ` Os ${received} item(ns) já recebido(s) continuam registrados.` : '';
+    if (!confirm(`Cancelar os ${pending} item(ns) pendente(s) da SC nº ${request.number}?${detail}`)) {
       return;
     }
 
@@ -288,6 +379,30 @@ export class Compras implements OnInit {
       },
       error: () => this.actionFor.set(null),
     });
+  }
+
+  protected pendingCount(request: PurchaseRequest): number {
+    return request.items.filter((i) => i.status === 'Open').length;
+  }
+
+  protected receivedCount(request: PurchaseRequest): number {
+    return request.items.filter((i) => i.status === 'Received').length;
+  }
+
+  protected totalQuantity(request: PurchaseRequest): number {
+    return request.items.reduce((sum, item) => sum + item.quantity, 0);
+  }
+
+  // Ex.: "Aberta · 2 de 5 recebidos" ou "Recebida (parcial)".
+  protected statusDetail(request: PurchaseRequest): string {
+    const received = this.receivedCount(request);
+    if (request.status === 'Open' && received > 0) {
+      return `${received} de ${request.items.length} recebido(s)`;
+    }
+    if (request.status === 'Received' && received < request.items.length) {
+      return 'parcial';
+    }
+    return '';
   }
 
   protected exportMonthly(): void {
@@ -310,6 +425,17 @@ export class Compras implements OnInit {
     exportToExcel(rows, columns, `solicitacoes-compra-${this.year()}`);
   }
 
+  private suggestedQuantity(productId: number | null): number {
+    const stock = this.branchProductStocks().find((ps) => ps.productId === productId);
+    return stock ? this.missingQuantity(stock) : 1;
+  }
+
+  // Erros da API: mensagem de negócio ou o primeiro erro de validação.
+  private errorMessage(err: { error?: { mensagem?: string; errors?: Record<string, string[]> } }, fallback: string): string {
+    const validation = err.error?.errors ? Object.values(err.error.errors).flat()[0] : undefined;
+    return err.error?.mensagem ?? validation ?? fallback;
+  }
+
   private refresh(): void {
     this.loadRequests();
     this.loadBranchProductStocks();
@@ -318,31 +444,31 @@ export class Compras implements OnInit {
     }
   }
 
-  private buildMonthlyRows(requests: PurchaseRequest[]): MonthlyRow[] {
+  private buildMonthlyRows(lines: PurchaseRequestLine[]): MonthlyRow[] {
     const rows = new Map<number, MonthlyRow>();
 
-    for (const request of requests) {
-      if (request.status === 'Canceled') {
+    for (const line of lines) {
+      if (line.status === 'Canceled') {
         continue;
       }
 
-      let row = rows.get(request.productId);
+      let row = rows.get(line.productId);
       if (!row) {
         row = {
-          productId: request.productId,
-          productName: request.productName,
-          sku: request.sku,
+          productId: line.productId,
+          productName: line.productName,
+          sku: line.sku,
           months: MONTHS.map(() => ({ quantity: 0, numbers: [] })),
           total: 0,
         };
-        rows.set(request.productId, row);
+        rows.set(line.productId, row);
       }
 
       // requestDate vem como yyyy-MM-dd; lê o mês direto para não sofrer com fuso.
-      const monthIndex = Number(request.requestDate.substring(5, 7)) - 1;
-      row.months[monthIndex].quantity += request.quantity;
-      row.months[monthIndex].numbers.push(request.number);
-      row.total += request.quantity;
+      const monthIndex = Number(line.requestDate.substring(5, 7)) - 1;
+      row.months[monthIndex].quantity += line.quantity;
+      row.months[monthIndex].numbers.push(line.number);
+      row.total += line.quantity;
     }
 
     return [...rows.values()].sort((a, b) => a.productName.localeCompare(b.productName));
@@ -368,7 +494,7 @@ export class Compras implements OnInit {
         this.selectedBranchId.set(branch.id);
         this.loadRequests();
 
-        // Vindo do Estoque com "Solicitar": abre o formulário já preenchido.
+        // Vindo do Estoque com "Solicitar": abre o formulário já com o produto.
         const productId = Number(params.get('productId')) || null;
         const quantity = Number(params.get('quantity')) || null;
         this.loadBranchProductStocks(() => {

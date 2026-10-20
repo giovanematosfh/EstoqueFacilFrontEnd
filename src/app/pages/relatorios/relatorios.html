@@ -1,22 +1,8 @@
 <div class="page">
   <header class="page-header">
     <h1>Relatórios</h1>
-    <p>Gere relatórios de estoque e exporte em Excel ou PDF.</p>
+    <p>Gere os relatórios de uma filial ou de todas juntas e exporte em Excel ou PDF.</p>
   </header>
-
-  <div class="branch-selector">
-    <label for="branchSelect">Filial</label>
-    <select
-      id="branchSelect"
-      [ngModel]="selectedBranchId()"
-      (ngModelChange)="onBranchChange($event)"
-      [disabled]="branches().length === 0"
-    >
-      @for (branch of branches(); track branch.id) {
-        <option [ngValue]="branch.id">{{ branch.name }}</option>
-      }
-    </select>
-  </div>
 
   @if (branches().length === 0) {
     <app-empty-state
@@ -25,56 +11,102 @@
       description="Cadastre uma filial em Filiais para gerar relatórios de estoque."
     />
   } @else {
+    <div class="card form-card">
+      <form [formGroup]="dateForm" (ngSubmit)="generate()">
+        <div class="form-grid">
+          <div class="field">
+            <label for="branchSelect">Filial</label>
+            <select
+              id="branchSelect"
+              [ngModel]="selectedBranchId()"
+              [ngModelOptions]="{ standalone: true }"
+              (ngModelChange)="onBranchChange($event)"
+            >
+              <option [ngValue]="null">Todas as filiais</option>
+              @for (branch of branches(); track branch.id) {
+                <option [ngValue]="branch.id">{{ branch.name }}</option>
+              }
+            </select>
+          </div>
+          <div class="field">
+            <label for="from">Período de</label>
+            <input id="from" type="date" formControlName="from" />
+          </div>
+          <div class="field">
+            <label for="to">Até</label>
+            <input id="to" type="date" formControlName="to" />
+          </div>
+        </div>
+        <p class="field-hint">
+          O período vale para entradas, saídas e solicitações de compra. Estoque atual e estoque baixo mostram a
+          situação de hoje.
+        </p>
+        <div class="form-actions">
+          <button class="btn btn-secondary" type="button" [disabled]="loading() || summaryRows().length === 0" (click)="exportAll()">
+            <app-icon name="download" [size]="16" />
+            Exportar tudo (Excel)
+          </button>
+          <button class="btn btn-primary" type="submit" [disabled]="loading()">
+            {{ loading() ? 'Gerando...' : 'Gerar' }}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    @if (loadError()) {
+      <div class="alert-error">{{ loadError() }}</div>
+    }
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <span class="stat-label">Entradas no período</span>
+        <span class="stat-value">{{ totals().inbound }}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Saídas no período</span>
+        <span class="stat-value">{{ totals().outbound }}</span>
+      </div>
+      <div class="stat-card" [class.warning]="totals().lowStock > 0">
+        <span class="stat-label">Itens com estoque baixo</span>
+        <span class="stat-value">{{ totals().lowStock }}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">SCs em aberto no período</span>
+        <span class="stat-value">{{ totals().openRequests }}</span>
+      </div>
+    </div>
+
     <div class="report-tabs">
-      <button
-        class="report-tab"
-        type="button"
-        [class.active]="activeReport() === 'lowStock'"
-        (click)="selectReport('lowStock')"
-      >
+      <button class="report-tab" type="button" [class.active]="activeReport() === 'control'" (click)="selectReport('control')">
+        Controle (planilha)
+      </button>
+      <button class="report-tab" type="button" [class.active]="activeReport() === 'summary'" (click)="selectReport('summary')">
+        Resumo por Produto
+      </button>
+      <button class="report-tab" type="button" [class.active]="activeReport() === 'lowStock'" (click)="selectReport('lowStock')">
         Estoque Baixo
       </button>
-      <button
-        class="report-tab"
-        type="button"
-        [class.active]="activeReport() === 'inventory'"
-        (click)="selectReport('inventory')"
-      >
-        Quantidade em Estoque
+      <button class="report-tab" type="button" [class.active]="activeReport() === 'inventory'" (click)="selectReport('inventory')">
+        Estoque Atual
       </button>
-      <button
-        class="report-tab"
-        type="button"
-        [class.active]="activeReport() === 'movements'"
-        (click)="selectReport('movements')"
-      >
-        Movimentações por Período
+      <button class="report-tab" type="button" [class.active]="activeReport() === 'movements'" (click)="selectReport('movements')">
+        Entradas e Saídas
+      </button>
+      <button class="report-tab" type="button" [class.active]="activeReport() === 'purchases'" (click)="selectReport('purchases')">
+        Solicitações de Compra
       </button>
     </div>
 
-    @if (activeReport() === 'movements') {
-      <div class="card form-card">
-        <form [formGroup]="dateForm" (ngSubmit)="generateMovementsReport()">
-          <div class="form-grid">
-            <div class="field">
-              <label for="from">De</label>
-              <input id="from" type="date" formControlName="from" />
-            </div>
-            <div class="field">
-              <label for="to">Até</label>
-              <input id="to" type="date" formControlName="to" />
-            </div>
-          </div>
-          <div class="form-actions">
-            <button class="btn btn-primary" type="submit">Gerar</button>
-          </div>
-        </form>
-      </div>
-    }
-
     <div class="page-toolbar">
       <span class="report-count">
+        {{ scopeLabel() }} ·
         @switch (activeReport()) {
+          @case ('control') {
+            {{ controlRows().length }} item(ns) · {{ controlTotalMissing() }} a solicitar
+          }
+          @case ('summary') {
+            {{ summaryRows().length }} produto(s) por filial
+          }
           @case ('lowStock') {
             {{ lowStockItems().length }} produto(s) com estoque baixo
           }
@@ -83,6 +115,9 @@
           }
           @case ('movements') {
             {{ movements().length }} movimentação(ões) no período
+          }
+          @case ('purchases') {
+            {{ purchaseRequests().length }} SC(s) no período
           }
         }
       </span>
@@ -99,108 +134,273 @@
     </div>
 
     @if (loading()) {
-      <div class="card"><p class="loading-text">Gerando relatório...</p></div>
-    } @else if (activeReport() === 'lowStock') {
-      @if (lowStockItems().length === 0) {
-        <app-empty-state
-          icon="estoque"
-          title="Nenhum produto com estoque baixo"
-          description="Todos os produtos desta filial estão com estoque acima do mínimo cadastrado."
-        />
-      } @else {
-        <div class="card">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>SKU</th>
-                <th>Quantidade</th>
-                <th>Mínimo</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (item of lowStockItems(); track item.productId) {
-                <tr>
-                  <td>{{ item.productName }}</td>
-                  <td>{{ item.sku }}</td>
-                  <td>
-                    {{ item.quantity }}
-                    <span class="badge badge-out">baixo</span>
-                  </td>
-                  <td>{{ item.minimumQuantity }}</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
-    } @else if (activeReport() === 'inventory') {
-      @if (inventoryItems().length === 0) {
-        <app-empty-state icon="produtos" title="Nenhum produto cadastrado" description="Cadastre produtos para ver o relatório de estoque desta filial." />
-      } @else {
-        <div class="card">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>SKU</th>
-                <th>Quantidade</th>
-                <th>Mínimo</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (item of inventoryItems(); track item.productId) {
-                <tr>
-                  <td>{{ item.productName }}</td>
-                  <td>{{ item.sku }}</td>
-                  <td>{{ item.quantity }}</td>
-                  <td>{{ item.minimumQuantity }}</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
+      <div class="card"><p class="loading-text">Gerando relatórios...</p></div>
     } @else {
-      @if (movements().length === 0) {
-        <app-empty-state
-          icon="estoque"
-          title="Nenhuma movimentação no período"
-          description="Ajuste o período acima e clique em Gerar."
-        />
-      } @else {
-        <div class="card">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Produto</th>
-                <th>Filial</th>
-                <th>Tipo</th>
-                <th>Quantidade</th>
-                <th>Motivo</th>
-                <th>Data</th>
-                <th>Saldo</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (movement of movements(); track movement.id) {
-                <tr>
-                  <td>{{ movement.productName }}</td>
-                  <td>{{ movement.branchName }}</td>
-                  <td>
-                    <span class="badge" [class.badge-in]="movement.type === 'Inbound'" [class.badge-out]="movement.type === 'Outbound'">
-                      {{ movement.type === 'Inbound' ? 'Entrada' : 'Saída' }}
-                    </span>
-                  </td>
-                  <td>{{ movement.quantity }}</td>
-                  <td>{{ movement.reason }}</td>
-                  <td>{{ movement.movementDate | date: 'dd/MM/yyyy HH:mm' }}</td>
-                  <td>{{ movement.stockBalanceAfter }}</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
+      @switch (activeReport()) {
+        @case ('control') {
+          @if (controlRows().length === 0) {
+            <app-empty-state icon="produtos" title="Nenhum produto encontrado" description="Cadastre produtos para ver o controle por filial." />
+          } @else {
+            <div class="card" style="overflow-x: auto; padding: 0">
+              <table class="table control-table">
+                <thead>
+                  <tr>
+                    <th rowspan="2">Unidade</th>
+                    <th rowspan="2">Item</th>
+                    <th rowspan="2">Estoque segurança</th>
+                    <th [attr.colspan]="months().length" class="group">Utilizado</th>
+                    <th rowspan="2">Estoque atual</th>
+                    <th rowspan="2">Qtd a solicitar</th>
+                    <th rowspan="2">Status</th>
+                    <th [attr.colspan]="months().length" class="group">SC - Solicitação de compras</th>
+                  </tr>
+                  <tr>
+                    @for (month of months(); track month.key) {
+                      <th>{{ month.label }}</th>
+                    }
+                    @for (month of months(); track month.key) {
+                      <th>{{ month.label }}</th>
+                    }
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of controlRows(); track row.key) {
+                    <tr>
+                      @if (row.branchRowSpan) {
+                        <td [attr.rowspan]="row.branchRowSpan" class="unit">{{ row.branchName }}</td>
+                      }
+                      <td class="item">{{ row.productName }}</td>
+                      <td class="safety">{{ row.minimumQuantity }}</td>
+                      @for (value of row.used; track $index) {
+                        <td class="used">{{ value || '' }}</td>
+                      }
+                      <td>{{ row.quantity }}</td>
+                      <td>{{ row.missing }}</td>
+                      <td>
+                        <span class="badge" [class.badge-out]="row.status === 'REPOR'" [class.badge-in]="row.status === 'OK'">
+                          {{ row.status }}
+                        </span>
+                      </td>
+                      @for (numbers of row.requests; track $index) {
+                        <td class="sc">{{ numbers }}</td>
+                      }
+                    </tr>
+                  }
+                  <tr class="total">
+                    <td [attr.colspan]="4 + months().length">Total geral</td>
+                    <td>{{ controlTotalMissing() }}</td>
+                    <td [attr.colspan]="1 + months().length"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+        @case ('summary') {
+          @if (summaryRows().length === 0) {
+            <app-empty-state icon="produtos" title="Nenhum produto encontrado" description="Cadastre produtos para ver o resumo por filial." />
+          } @else {
+            <div class="card" style="overflow-x: auto">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Produto</th>
+                    <th>Filial</th>
+                    <th>Entradas</th>
+                    <th>Saídas</th>
+                    <th>Estoque atual</th>
+                    <th>Mínimo</th>
+                    <th>Qtd a solicitar</th>
+                    <th>Status</th>
+                    <th>SC em aberto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of summaryRows(); track row.key) {
+                    <tr>
+                      <td>
+                        {{ row.productName }}
+                        <div class="cell-sub">{{ row.sku }}</div>
+                      </td>
+                      <td>{{ row.branchName }}</td>
+                      <td>{{ row.inbound }}</td>
+                      <td>{{ row.outbound }}</td>
+                      <td>{{ row.quantity }}</td>
+                      <td>{{ row.minimumQuantity }}</td>
+                      <td>{{ row.missing }}</td>
+                      <td>
+                        @if (row.lowStock) {
+                          <span class="badge badge-out">baixo</span>
+                        } @else {
+                          <span class="badge badge-in">ok</span>
+                        }
+                      </td>
+                      <td>{{ row.openRequest }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+        @case ('lowStock') {
+          @if (lowStockItems().length === 0) {
+            <app-empty-state
+              icon="estoque"
+              title="Nenhum produto com estoque baixo"
+              description="Todos os produtos estão com estoque acima do mínimo cadastrado."
+            />
+          } @else {
+            <div class="card">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>SKU</th>
+                    <th>Filial</th>
+                    <th>Quantidade</th>
+                    <th>Mínimo</th>
+                    <th>SC em aberto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of lowStockItems(); track item.productId + '-' + item.branchId) {
+                    <tr>
+                      <td>{{ item.productName }}</td>
+                      <td>{{ item.sku }}</td>
+                      <td>{{ item.branchName }}</td>
+                      <td>
+                        {{ item.quantity }}
+                        <span class="badge badge-out">baixo</span>
+                      </td>
+                      <td>{{ item.minimumQuantity }}</td>
+                      <td>{{ item.purchaseRequestNumber }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+        @case ('inventory') {
+          @if (inventoryItems().length === 0) {
+            <app-empty-state icon="produtos" title="Nenhum produto cadastrado" description="Cadastre produtos para ver o relatório de estoque." />
+          } @else {
+            <div class="card">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>SKU</th>
+                    <th>Filial</th>
+                    <th>Quantidade</th>
+                    <th>Mínimo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of inventoryItems(); track item.productId + '-' + item.branchId) {
+                    <tr>
+                      <td>{{ item.productName }}</td>
+                      <td>{{ item.sku }}</td>
+                      <td>{{ item.branchName }}</td>
+                      <td>{{ item.quantity }}</td>
+                      <td>{{ item.minimumQuantity }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+        @case ('movements') {
+          @if (movements().length === 0) {
+            <app-empty-state
+              icon="estoque"
+              title="Nenhuma movimentação no período"
+              description="Ajuste o período acima e clique em Gerar."
+            />
+          } @else {
+            <div class="card">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Produto</th>
+                    <th>Filial</th>
+                    <th>Tipo</th>
+                    <th>Quantidade</th>
+                    <th>Motivo</th>
+                    <th>Solicitante</th>
+                    <th>Data</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (movement of movements(); track movement.id) {
+                    <tr>
+                      <td>{{ movement.productName }}</td>
+                      <td>{{ movement.branchName }}</td>
+                      <td>
+                        <span class="badge" [class.badge-in]="movement.type === 'Inbound'" [class.badge-out]="movement.type === 'Outbound'">
+                          {{ movement.type === 'Inbound' ? 'Entrada' : 'Saída' }}
+                        </span>
+                      </td>
+                      <td>{{ movement.quantity }}</td>
+                      <td>{{ movement.reason }}</td>
+                      <td>{{ movement.requesterName }}</td>
+                      <td>{{ movement.movementDate | date: 'dd/MM/yyyy HH:mm' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+        @case ('purchases') {
+          @if (purchaseRequests().length === 0) {
+            <app-empty-state
+              icon="compras"
+              title="Nenhuma SC no período"
+              description="Ajuste o período acima e clique em Gerar."
+            />
+          } @else {
+            <div class="card">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Nº SC</th>
+                    <th>Produto</th>
+                    <th>Filial</th>
+                    <th>Qtd</th>
+                    <th>Data da SC</th>
+                    <th>Status</th>
+                    <th>Recebida em</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (request of purchaseRequests(); track request.id) {
+                    <tr>
+                      <td><strong>{{ request.number }}</strong></td>
+                      <td>{{ request.productName }}</td>
+                      <td>{{ request.branchName }}</td>
+                      <td>{{ request.quantity }}</td>
+                      <td>{{ formatDate(request.requestDate) }}</td>
+                      <td>
+                        <span
+                          class="badge"
+                          [class.badge-warn]="request.status === 'Open'"
+                          [class.badge-in]="request.status === 'Received'"
+                          [class.badge-out]="request.status === 'Canceled'"
+                        >
+                          {{ STATUS_LABELS[request.status] }}
+                        </span>
+                      </td>
+                      <td>{{ formatDate(request.receivedDate) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
       }
     }
   }

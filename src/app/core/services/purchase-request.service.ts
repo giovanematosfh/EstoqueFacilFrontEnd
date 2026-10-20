@@ -5,6 +5,7 @@ import { API_BASE_URL } from '../config/api.config';
 import {
   CreatePurchaseRequest,
   PurchaseRequest,
+  PurchaseRequestLine,
   PurchaseRequestStatus,
   ReceivePurchaseRequest,
 } from '../models/purchase-request.model';
@@ -32,9 +33,13 @@ export class PurchaseRequestService {
     return this.http.get<PagedResult<PurchaseRequest>>(this.baseUrl, { params });
   }
 
-  getReport(branchId: number, from: string, to: string): Observable<PurchaseRequest[]> {
-    const params = new HttpParams().set('branchId', branchId).set('from', from).set('to', to);
-    return this.http.get<PurchaseRequest[]>(`${this.baseUrl}/report`, { params });
+  // Uma linha por item de SC. branchId null = todas as filiais.
+  getReport(branchId: number | null, from: string, to: string): Observable<PurchaseRequestLine[]> {
+    let params = new HttpParams().set('from', from).set('to', to);
+    if (branchId) {
+      params = params.set('branchId', branchId);
+    }
+    return this.http.get<PurchaseRequestLine[]>(`${this.baseUrl}/report`, { params });
   }
 
   create(dto: CreatePurchaseRequest): Observable<PurchaseRequest> {

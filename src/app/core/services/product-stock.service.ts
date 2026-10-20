@@ -18,13 +18,15 @@ export class ProductStockService {
     return this.http.get<PagedResult<ProductStock>>(this.baseUrl, { params });
   }
 
-  getLowStock(branchId: number): Observable<ProductStock[]> {
-    const params = new HttpParams().set('branchId', branchId);
+  // branchId null = todas as filiais.
+  getLowStock(branchId: number | null): Observable<ProductStock[]> {
+    const params = branchId ? new HttpParams().set('branchId', branchId) : new HttpParams();
     return this.http.get<ProductStock[]>(`${this.baseUrl}/low-stock`, { params });
   }
 
-  getReport(branchId: number): Observable<ProductStock[]> {
-    const params = new HttpParams().set('branchId', branchId);
+  // branchId null = todas as filiais.
+  getReport(branchId: number | null): Observable<ProductStock[]> {
+    const params = branchId ? new HttpParams().set('branchId', branchId) : new HttpParams();
     return this.http.get<ProductStock[]>(`${this.baseUrl}/report`, { params });
   }
 

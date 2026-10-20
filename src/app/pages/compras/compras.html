@@ -2,7 +2,7 @@
   <div class="page-toolbar">
     <header class="page-header">
       <h1>Solicitações de Compra</h1>
-      <p>Registre as SCs dos itens em falta e acompanhe o histórico de reposição do estoque.</p>
+      <p>Registre as SCs, com um ou mais produtos, e acompanhe o histórico de reposição do estoque.</p>
     </header>
     <button class="btn btn-primary" type="button" [disabled]="!selectedBranchId()" (click)="openForm()">
       <app-icon name="plus" [size]="16" />
@@ -37,33 +37,10 @@
         <form [formGroup]="form" (ngSubmit)="submitForm()">
           <div class="form-grid">
             <div class="field">
-              <label for="productId">Produto</label>
-              <select id="productId" formControlName="productId">
-                <option [ngValue]="null" disabled>Selecione um produto</option>
-                @for (ps of branchProductStocks(); track ps.productId) {
-                  <option [ngValue]="ps.productId">
-                    {{ ps.productName }} (atual: {{ ps.quantity }} / mín: {{ ps.minimumQuantity }})
-                  </option>
-                }
-              </select>
-              @if (form.controls.productId.invalid && form.controls.productId.touched) {
-                <span class="field-error">Selecione um produto.</span>
-              }
-            </div>
-
-            <div class="field">
               <label for="number">Nº da SC</label>
               <input id="number" type="text" maxlength="50" formControlName="number" placeholder="Ex.: 64154" />
               @if (form.controls.number.invalid && form.controls.number.touched) {
                 <span class="field-error">Informe o número da SC.</span>
-              }
-            </div>
-
-            <div class="field">
-              <label for="quantity">Quantidade solicitada</label>
-              <input id="quantity" type="number" min="1" formControlName="quantity" />
-              @if (form.controls.quantity.invalid && form.controls.quantity.touched) {
-                <span class="field-error">Informe uma quantidade válida.</span>
               }
             </div>
 
@@ -80,9 +57,63 @@
               <input id="requesterName" type="text" formControlName="requesterName" placeholder="Opcional" />
             </div>
 
-            <div class="field full-width">
+            <div class="field">
               <label for="notes">Observação</label>
               <input id="notes" type="text" maxlength="500" formControlName="notes" placeholder="Opcional" />
+            </div>
+          </div>
+
+          <div class="sc-items">
+            <div class="sc-items-header">
+              <h3>Produtos da SC ({{ itemForms.length }})</h3>
+              <div class="table-actions">
+                @if (lowStockToAdd().length > 0) {
+                  <button class="btn btn-secondary btn-sm" type="button" (click)="addLowStockItems()">
+                    Adicionar itens com estoque baixo ({{ lowStockToAdd().length }})
+                  </button>
+                }
+                <button class="btn btn-secondary btn-sm" type="button" (click)="addItem()">
+                  <app-icon name="plus" [size]="14" />
+                  Adicionar produto
+                </button>
+              </div>
+            </div>
+
+            @if (itemForms.length === 0) {
+              <p class="cell-sub">Nenhum produto ainda. Clique em Adicionar produto.</p>
+            }
+
+            <div formArrayName="items">
+              @for (item of itemForms.controls; track item; let i = $index) {
+                <div class="sc-item-row" [formGroupName]="i">
+                  <div class="field">
+                    <label [for]="'item-product-' + i">Produto</label>
+                    <select [id]="'item-product-' + i" formControlName="productId">
+                      <option [ngValue]="null" disabled>Selecione um produto</option>
+                      @for (ps of branchProductStocks(); track ps.productId) {
+                        <option [ngValue]="ps.productId" [disabled]="isTakenElsewhere(ps.productId, i)">
+                          {{ stockLabel(ps) }}{{ ps.lowStock ? ' — abaixo do mínimo' : '' }}
+                        </option>
+                      }
+                    </select>
+                    @if (item.controls.productId.invalid && item.controls.productId.touched) {
+                      <span class="field-error">Selecione um produto.</span>
+                    }
+                  </div>
+
+                  <div class="field sc-item-qty">
+                    <label [for]="'item-qty-' + i">Quantidade</label>
+                    <input [id]="'item-qty-' + i" type="number" min="1" formControlName="quantity" />
+                    @if (item.controls.quantity.invalid && item.controls.quantity.touched) {
+                      <span class="field-error">Quantidade inválida.</span>
+                    }
+                  </div>
+
+                  <button class="icon-btn sc-item-remove" type="button" (click)="removeItem(i)" aria-label="Remover produto" title="Remover produto">
+                    <app-icon name="delete" [size]="16" />
+                  </button>
+                </div>
+              }
             </div>
           </div>
 
@@ -103,25 +134,36 @@
     @if (receiving(); as request) {
       <div class="card form-card">
         <h2>Receber SC nº {{ request.number }}</h2>
-        <p class="cell-sub">
-          {{ request.productName }} — solicitado {{ request.quantity }} em
-          {{ request.requestDate | date: 'dd/MM/yyyy' : 'UTC' }}. A quantidade recebida entra no estoque.
+        <p class="form-card-hint">
+          Solicitada em {{ request.requestDate | date: 'dd/MM/yyyy' : 'UTC' }}. Informe o que chegou de cada produto;
+          deixe 0 no que ainda não chegou para receber depois. A quantidade recebida entra no estoque.
         </p>
         <form [formGroup]="receiveForm" (ngSubmit)="submitReceive()">
-          <div class="form-grid">
-            <div class="field">
-              <label for="receiveQuantity">Quantidade recebida</label>
-              <input id="receiveQuantity" type="number" min="1" formControlName="quantity" />
-              @if (receiveForm.controls.quantity.invalid && receiveForm.controls.quantity.touched) {
-                <span class="field-error">Informe uma quantidade válida.</span>
-              }
-            </div>
-
-            <div class="field">
-              <label for="receivedDate">Data de recebimento</label>
-              <input id="receivedDate" type="date" formControlName="receivedDate" />
-            </div>
+          <div class="field sc-receive-date">
+            <label for="receivedDate">Data de recebimento</label>
+            <input id="receivedDate" type="date" formControlName="receivedDate" />
           </div>
+
+          <table class="table sc-receive-table" formArrayName="items">
+            <thead>
+              <tr>
+                <th>Produto</th>
+                <th>Solicitado</th>
+                <th>Recebido agora</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of receiveItemForms.controls; track item.controls.itemId.value; let i = $index) {
+                <tr [formGroupName]="i">
+                  <td>{{ item.controls.productName.value }}</td>
+                  <td>{{ item.controls.requested.value }}</td>
+                  <td>
+                    <input class="inline-number-input" type="number" min="0" formControlName="quantity" [attr.aria-label]="'Quantidade recebida de ' + item.controls.productName.value" />
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
 
           @if (receiveError()) {
             <div class="alert-error">{{ receiveError() }}</div>
@@ -188,11 +230,9 @@
             <thead>
               <tr>
                 <th>Nº SC</th>
-                <th>Produto</th>
-                <th>Qtd</th>
+                <th>Produtos</th>
                 <th>Data da SC</th>
                 <th>Status</th>
-                <th>Recebimento</th>
                 <th>Solicitante</th>
                 <th></th>
               </tr>
@@ -200,14 +240,32 @@
             <tbody>
               @for (request of requests(); track request.id) {
                 <tr>
-                  <td><strong>{{ request.number }}</strong></td>
                   <td>
-                    {{ request.productName }}
+                    <strong>{{ request.number }}</strong>
+                    <div class="cell-sub">{{ request.items.length }} produto(s) · {{ totalQuantity(request) }} un.</div>
+                  </td>
+                  <td>
+                    <ul class="sc-item-list">
+                      @for (item of request.items; track item.id) {
+                        <li [class.sc-item-done]="item.status !== 'Open'">
+                          <span>{{ item.productName }}</span>
+                          <span class="sc-item-qty-label">
+                            {{ item.quantity }}
+                            @if (item.status === 'Received') {
+                              <span class="badge badge-in" [title]="'Recebido em ' + (item.receivedDate | date: 'dd/MM/yyyy' : 'UTC')">
+                                {{ item.receivedQuantity }} recebido(s)
+                              </span>
+                            } @else if (item.status === 'Canceled') {
+                              <span class="badge badge-out">cancelado</span>
+                            }
+                          </span>
+                        </li>
+                      }
+                    </ul>
                     @if (request.notes) {
                       <div class="cell-sub">{{ request.notes }}</div>
                     }
                   </td>
-                  <td>{{ request.quantity }}</td>
                   <td>{{ request.requestDate | date: 'dd/MM/yyyy' : 'UTC' }}</td>
                   <td>
                     <span
@@ -218,11 +276,8 @@
                     >
                       {{ STATUS_LABELS[request.status] }}
                     </span>
-                  </td>
-                  <td>
-                    @if (request.receivedDate) {
-                      {{ request.receivedDate | date: 'dd/MM/yyyy' : 'UTC' }}
-                      <div class="cell-sub">{{ request.receivedQuantity }} recebido(s)</div>
+                    @if (statusDetail(request); as detail) {
+                      <div class="cell-sub">{{ detail }}</div>
                     }
                   </td>
                   <td>{{ request.requesterName }}</td>
@@ -240,7 +295,7 @@
                         <button
                           class="icon-btn"
                           type="button"
-                          title="Cancelar SC"
+                          title="Cancelar itens pendentes"
                           [disabled]="actionFor() === request.id"
                           (click)="cancelRequest(request)"
                         >
