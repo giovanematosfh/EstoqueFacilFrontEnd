@@ -1,14 +1,20 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { AccountService } from '../../core/services/account.service';
 import { AuthService } from '../../core/services/auth';
 import { UserService } from '../../core/services/user.service';
 import { User } from '../../core/models/user.model';
-import { EmptyState } from '../../shared/empty-state/empty-state';
 import { Icon } from '../../shared/icon/icon';
+
+// Valida que newPassword e confirmPassword do grupo são iguais.
+function passwordsMatch(group: AbstractControl): ValidationErrors | null {
+  const { newPassword, confirmPassword } = group.value as { newPassword: string; confirmPassword: string };
+  return newPassword && confirmPassword && newPassword !== confirmPassword ? { passwordsMismatch: true } : null;
+}
 
 @Component({
   selector: 'app-configuracoes',
-  imports: [ReactiveFormsModule, EmptyState, Icon],
+  imports: [ReactiveFormsModule, Icon],
   templateUrl: './configuracoes.html',
 })
 export class Configuracoes implements OnInit {
@@ -36,6 +42,33 @@ export class Configuracoes implements OnInit {
     role: ['User'],
   });
 
+  // Admin redefine a senha de outro usuário da empresa.
+  protected readonly resettingUser = signal<User | null>(null);
+  protected readonly resetSaving = signal(false);
+  protected readonly resetError = signal('');
+  protected readonly successMessage = signal('');
+  protected readonly resetForm = this.fb.nonNullable.group(
+    {
+      newPassword: ['', [Validators.required, Validators.minLength(6)]],
+      confirmPassword: ['', Validators.required],
+    },
+    { validators: passwordsMatch },
+  );
+
+  // Usuário logado troca a própria senha.
+  private readonly accountService = inject(AccountService);
+  protected readonly passwordSaving = signal(false);
+  protected readonly passwordError = signal('');
+  protected readonly passwordSuccess = signal('');
+  protected readonly passwordForm = this.fb.nonNullable.group(
+    {
+      currentPassword: ['', Validators.required],
+      newPassword: ['', [Validators.required, Validators.minLength(6)]],
+      confirmPassword: ['', Validators.required],
+    },
+    { validators: passwordsMatch },
+  );
+
   ngOnInit(): void {
     if (this.isAdmin()) {
       this.loadUsers();
@@ -45,6 +78,7 @@ export class Configuracoes implements OnInit {
   protected openCreateForm(): void {
     this.editingUser.set(null);
     this.formError.set('');
+    this.resettingUser.set(null);
     this.form.reset({ fullName: '', email: '', password: '', role: 'User' });
     this.form.controls.password.setValidators([Validators.required, Validators.minLength(6)]);
     this.form.controls.password.updateValueAndValidity();
@@ -54,6 +88,7 @@ export class Configuracoes implements OnInit {
   protected openEditForm(user: User): void {
     this.editingUser.set(user);
     this.formError.set('');
+    this.resettingUser.set(null);
     this.form.reset({ fullName: user.fullName, email: user.email, password: '', role: user.role });
     this.form.controls.password.clearValidators();
     this.form.controls.password.updateValueAndValidity();
@@ -134,6 +169,68 @@ export class Configuracoes implements OnInit {
       },
       error: (err) => {
         this.errorMessage.set(err.error?.mensagem ?? 'Não foi possível alterar o status do usuário.');
+      },
+    });
+  }
+
+  protected openResetForm(user: User): void {
+    this.showEditForm.set(false);
+    this.successMessage.set('');
+    this.resetError.set('');
+    this.resetForm.reset({ newPassword: '', confirmPassword: '' });
+    this.resettingUser.set(user);
+  }
+
+  protected closeResetForm(): void {
+    this.resettingUser.set(null);
+  }
+
+  protected submitResetPassword(): void {
+    const target = this.resettingUser();
+    if (!target) {
+      return;
+    }
+    if (this.resetForm.invalid) {
+      this.resetForm.markAllAsTouched();
+      return;
+    }
+
+    this.resetSaving.set(true);
+    this.resetError.set('');
+
+    this.userService.resetPassword(target.id, this.resetForm.getRawValue().newPassword).subscribe({
+      next: () => {
+        this.resetSaving.set(false);
+        this.resettingUser.set(null);
+        this.successMessage.set(`Senha de ${target.fullName} redefinida.`);
+      },
+      error: (err) => {
+        this.resetSaving.set(false);
+        this.resetError.set(err.error?.mensagem ?? 'Não foi possível redefinir a senha.');
+      },
+    });
+  }
+
+  protected submitChangePassword(): void {
+    if (this.passwordForm.invalid) {
+      this.passwordForm.markAllAsTouched();
+      return;
+    }
+
+    this.passwordSaving.set(true);
+    this.passwordError.set('');
+    this.passwordSuccess.set('');
+
+    const { currentPassword, newPassword } = this.passwordForm.getRawValue();
+    this.accountService.changePassword(currentPassword, newPassword).subscribe({
+      next: () => {
+        this.passwordSaving.set(false);
+        this.passwordForm.reset({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        this.passwordSuccess.set('Senha alterada. Use a nova senha no próximo login.');
+      },
+      error: (err) => {
+        this.passwordSaving.set(false);
+        this.passwordError.set(err.error?.mensagem ?? 'Não foi possível alterar a senha.');
       },
     });
   }
