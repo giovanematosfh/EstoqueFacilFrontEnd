@@ -108,6 +108,10 @@ const PURCHASE_COLUMNS: ReportColumn<PurchaseRequestLine>[] = [
   { header: 'Produto', key: 'productName' },
   { header: 'Filial', key: 'branchName' },
   { header: 'Quantidade', key: 'quantity' },
+  { header: 'Preço unit.', key: 'unitPrice', format: (v) => (v == null ? '' : formatMoney(v as number)) },
+  { header: 'Total', key: 'total', format: (v) => (v == null ? '' : formatMoney(v as number)) },
+  { header: 'Fornecedor', key: 'supplierName' },
+  { header: 'Setor', key: 'sectorName' },
   { header: 'Data da SC', key: 'requestDate', format: (v) => formatDate(v as string) },
   { header: 'Status', key: 'status', format: (v) => STATUS_LABELS[v as PurchaseRequestLine['status']] },
   { header: 'Recebida em', key: 'receivedDate', format: (v) => formatDate(v as string) },
@@ -122,6 +126,10 @@ function formatDateTime(value: string): string {
 // yyyy-MM-dd -> dd/MM/yyyy sem passar por Date (evita deslocamento de fuso).
 function formatDate(value: string | null | undefined): string {
   return value ? value.split('-').reverse().join('/') : '';
+}
+
+function formatMoney(value: number): string {
+  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 // Meses entre duas datas yyyy-MM-dd (inclusive). Mostra o ano no rótulo quando o período cruza anos.

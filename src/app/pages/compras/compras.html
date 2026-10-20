@@ -32,9 +32,14 @@
     />
   } @else {
     @if (showForm()) {
-      <div class="card form-card">
-        <h2>Nova Solicitação de Compra</h2>
-        <form [formGroup]="form" (ngSubmit)="submitForm()">
+      <app-modal
+        [title]="editingId() ? 'Editar ordem de compra' : 'Nova ordem de compra (SC)'"
+        subtitle="Preencha os dados da compra e os produtos. Preço é opcional — pode ficar para depois da cotação."
+        size="lg"
+        (closed)="closeForm()"
+      >
+        <form id="poForm" [formGroup]="form" (ngSubmit)="submitForm()">
+          <h3 class="modal-section-title">Dados da SC</h3>
           <div class="form-grid">
             <div class="field">
               <label for="number">Nº da SC</label>
@@ -53,92 +58,164 @@
             </div>
 
             <div class="field">
+              <label for="expectedDeliveryDate">Previsão de entrega</label>
+              <input id="expectedDeliveryDate" type="date" formControlName="expectedDeliveryDate" />
+            </div>
+
+            <div class="field">
+              <label for="sectorId">Setor</label>
+              <div class="field-with-action">
+                <select id="sectorId" formControlName="sectorId">
+                  <option [ngValue]="null">Sem setor</option>
+                  @for (sector of sectors(); track sector.id) {
+                    <option [ngValue]="sector.id" [disabled]="!sector.active">{{ sector.name }}</option>
+                  }
+                </select>
+                <button class="btn btn-secondary btn-sm" type="button" (click)="showSectorModal.set(true)" title="Cadastrar setor">
+                  <app-icon name="plus" [size]="14" />
+                  Novo
+                </button>
+              </div>
+            </div>
+
+            <div class="field">
               <label for="requesterName">Solicitante</label>
               <input id="requesterName" type="text" formControlName="requesterName" placeholder="Opcional" />
             </div>
 
             <div class="field">
-              <label for="notes">Observação</label>
-              <input id="notes" type="text" maxlength="500" formControlName="notes" placeholder="Opcional" />
+              <label for="paymentTerms">Condição de pagamento</label>
+              <input id="paymentTerms" type="text" maxlength="200" formControlName="paymentTerms" placeholder="Ex.: 30/60 dias, à vista no PIX" />
             </div>
           </div>
 
-          <div class="sc-items">
-            <div class="sc-items-header">
-              <h3>Produtos da SC ({{ itemForms.length }})</h3>
-              <div class="table-actions">
-                @if (lowStockToAdd().length > 0) {
-                  <button class="btn btn-secondary btn-sm" type="button" (click)="addLowStockItems()">
-                    Adicionar itens com estoque baixo ({{ lowStockToAdd().length }})
-                  </button>
+          <h3 class="modal-section-title">Fornecedor</h3>
+          <div class="form-grid">
+            <div class="field">
+              <label for="supplierId">Fornecedor</label>
+              <select id="supplierId" formControlName="supplierId">
+                <option [ngValue]="null">A definir</option>
+                @for (supplier of suppliers(); track supplier.id) {
+                  <option [ngValue]="supplier.id">{{ supplier.name }}</option>
                 }
-                <button class="btn btn-secondary btn-sm" type="button" (click)="addItem()">
-                  <app-icon name="plus" [size]="14" />
-                  Adicionar produto
-                </button>
-              </div>
-            </div>
-
-            @if (itemForms.length === 0) {
-              <p class="cell-sub">Nenhum produto ainda. Clique em Adicionar produto.</p>
-            }
-
-            <div formArrayName="items">
-              @for (item of itemForms.controls; track item; let i = $index) {
-                <div class="sc-item-row" [formGroupName]="i">
-                  <div class="field">
-                    <label [for]="'item-product-' + i">Produto</label>
-                    <select [id]="'item-product-' + i" formControlName="productId">
-                      <option [ngValue]="null" disabled>Selecione um produto</option>
-                      @for (ps of branchProductStocks(); track ps.productId) {
-                        <option [ngValue]="ps.productId" [disabled]="isTakenElsewhere(ps.productId, i)">
-                          {{ stockLabel(ps) }}{{ ps.lowStock ? ' — abaixo do mínimo' : '' }}
-                        </option>
-                      }
-                    </select>
-                    @if (item.controls.productId.invalid && item.controls.productId.touched) {
-                      <span class="field-error">Selecione um produto.</span>
-                    }
-                  </div>
-
-                  <div class="field sc-item-qty">
-                    <label [for]="'item-qty-' + i">Quantidade</label>
-                    <input [id]="'item-qty-' + i" type="number" min="1" formControlName="quantity" />
-                    @if (item.controls.quantity.invalid && item.controls.quantity.touched) {
-                      <span class="field-error">Quantidade inválida.</span>
-                    }
-                  </div>
-
-                  <button class="icon-btn sc-item-remove" type="button" (click)="removeItem(i)" aria-label="Remover produto" title="Remover produto">
-                    <app-icon name="delete" [size]="16" />
-                  </button>
-                </div>
+              </select>
+              @if (suppliers().length === 0) {
+                <span class="field-hint">Nenhum fornecedor cadastrado. Cadastre em Cadastros › Fornecedores.</span>
               }
             </div>
+
+            @if (selectedSupplier(); as supplier) {
+              <div class="supplier-card">
+                <strong>{{ supplier.name }}</strong>
+                @if (supplier.document) { <div>CNPJ/CPF: {{ supplier.document }}</div> }
+                @if (supplier.phone || supplier.email) { <div>{{ supplier.phone }} {{ supplier.email }}</div> }
+                @if (supplier.address) { <div>{{ supplier.address }}</div> }
+              </div>
+            }
           </div>
 
-          @if (formError()) {
-            <div class="alert-error">{{ formError() }}</div>
+          <div class="sc-items-header">
+            <h3 class="modal-section-title">Produtos ({{ itemForms.length }})</h3>
+            <div class="table-actions">
+              @if (lowStockToAdd().length > 0) {
+                <button class="btn btn-secondary btn-sm" type="button" (click)="addLowStockItems()">
+                  Adicionar itens com estoque baixo ({{ lowStockToAdd().length }})
+                </button>
+              }
+              <button class="btn btn-secondary btn-sm" type="button" (click)="addItem()">
+                <app-icon name="plus" [size]="14" />
+                Adicionar produto
+              </button>
+            </div>
+          </div>
+
+          @if (itemForms.length === 0) {
+            <p class="cell-sub">Nenhum produto ainda. Clique em Adicionar produto.</p>
+          } @else {
+            <table class="table po-items-table" formArrayName="items">
+              <thead>
+                <tr>
+                  <th>Produto</th>
+                  <th class="po-col-qty">Qtd</th>
+                  <th class="po-col-price">Preço unit. (R$)</th>
+                  <th class="po-col-total">Total</th>
+                  <th class="po-col-action"></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of itemForms.controls; track item; let i = $index) {
+                  <tr [formGroupName]="i">
+                    <td class="po-col-product">
+                      <select formControlName="productId" [attr.aria-label]="'Produto do item ' + (i + 1)">
+                        <option [ngValue]="null" disabled>Selecione um produto</option>
+                        @for (ps of branchProductStocks(); track ps.productId) {
+                          <option [ngValue]="ps.productId" [disabled]="isTakenElsewhere(ps.productId, i)">
+                            {{ stockLabel(ps) }}{{ ps.lowStock ? ' — abaixo do mínimo' : '' }}
+                          </option>
+                        }
+                      </select>
+                      @if (item.controls.productId.invalid && item.controls.productId.touched) {
+                        <span class="field-error">Selecione um produto.</span>
+                      }
+                    </td>
+                    <td class="po-col-qty">
+                      <input type="number" min="1" formControlName="quantity" [attr.aria-label]="'Quantidade do item ' + (i + 1)" />
+                      @if (item.controls.quantity.invalid && item.controls.quantity.touched) {
+                        <span class="field-error">Inválida.</span>
+                      }
+                    </td>
+                    <td class="po-col-price">
+                      <input type="number" min="0" step="0.01" formControlName="unitPrice" placeholder="—" [attr.aria-label]="'Preço unitário do item ' + (i + 1)" />
+                    </td>
+                    <td class="po-col-total">
+                      {{ itemTotal(i) !== null ? (itemTotal(i) | currency: 'BRL') : '—' }}
+                    </td>
+                    <td class="po-col-action">
+                      <button class="icon-btn" type="button" (click)="removeItem(i)" aria-label="Remover produto" title="Remover produto">
+                        <app-icon name="delete" [size]="16" />
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+
+            <div class="po-total-row">
+              <span>Total da ordem</span>
+              <strong>{{ orderTotal() | currency: 'BRL' }}</strong>
+            </div>
           }
 
-          <div class="form-actions">
-            <button class="btn btn-secondary" type="button" (click)="closeForm()">Cancelar</button>
-            <button class="btn btn-primary" type="submit" [disabled]="saving()">
-              {{ saving() ? 'Salvando...' : 'Salvar SC' }}
-            </button>
+          <div class="field full-width">
+            <label for="notes">Observações</label>
+            <input id="notes" type="text" maxlength="500" formControlName="notes" placeholder="Ex.: entregar no almoxarifado, horário comercial" />
           </div>
         </form>
-      </div>
+
+        @if (formError()) {
+          <div class="alert-error">{{ formError() }}</div>
+        }
+
+        <ng-container modal-footer>
+          <button class="btn btn-secondary" type="button" (click)="closeForm()">Cancelar</button>
+          <button class="btn btn-primary" type="submit" form="poForm" [disabled]="saving()">
+            {{ saving() ? 'Salvando...' : editingId() ? 'Salvar alterações' : 'Salvar SC' }}
+          </button>
+        </ng-container>
+      </app-modal>
+    }
+
+    @if (showSectorModal()) {
+      <app-sector-form-modal (saved)="onSectorCreated($event)" (closed)="showSectorModal.set(false)" />
     }
 
     @if (receiving(); as request) {
-      <div class="card form-card">
-        <h2>Receber SC nº {{ request.number }}</h2>
-        <p class="form-card-hint">
-          Solicitada em {{ request.requestDate | date: 'dd/MM/yyyy' : 'UTC' }}. Informe o que chegou de cada produto;
-          deixe 0 no que ainda não chegou para receber depois. A quantidade recebida entra no estoque.
-        </p>
-        <form [formGroup]="receiveForm" (ngSubmit)="submitReceive()">
+      <app-modal
+        [title]="'Receber SC nº ' + request.number"
+        [subtitle]="'Solicitada em ' + (request.requestDate | date: 'dd/MM/yyyy' : 'UTC') + '. Deixe 0 no que ainda não chegou; a quantidade recebida entra no estoque.'"
+        (closed)="closeReceive()"
+      >
+        <form id="receiveForm" [formGroup]="receiveForm" (ngSubmit)="submitReceive()">
           <div class="field sc-receive-date">
             <label for="receivedDate">Data de recebimento</label>
             <input id="receivedDate" type="date" formControlName="receivedDate" />
@@ -164,19 +241,19 @@
               }
             </tbody>
           </table>
-
-          @if (receiveError()) {
-            <div class="alert-error">{{ receiveError() }}</div>
-          }
-
-          <div class="form-actions">
-            <button class="btn btn-secondary" type="button" (click)="closeReceive()">Cancelar</button>
-            <button class="btn btn-primary" type="submit" [disabled]="actionFor() === request.id">
-              {{ actionFor() === request.id ? 'Registrando...' : 'Confirmar recebimento' }}
-            </button>
-          </div>
         </form>
-      </div>
+
+        @if (receiveError()) {
+          <div class="alert-error">{{ receiveError() }}</div>
+        }
+
+        <ng-container modal-footer>
+          <button class="btn btn-secondary" type="button" (click)="closeReceive()">Cancelar</button>
+          <button class="btn btn-primary" type="submit" form="receiveForm" [disabled]="actionFor() === request.id">
+            {{ actionFor() === request.id ? 'Registrando...' : 'Confirmar recebimento' }}
+          </button>
+        </ng-container>
+      </app-modal>
     }
 
     <div class="report-tabs">
@@ -231,7 +308,8 @@
               <tr>
                 <th>Nº SC</th>
                 <th>Produtos</th>
-                <th>Data da SC</th>
+                <th>Fornecedor / Setor</th>
+                <th>Datas</th>
                 <th>Status</th>
                 <th>Solicitante</th>
                 <th></th>
@@ -266,7 +344,21 @@
                       <div class="cell-sub">{{ request.notes }}</div>
                     }
                   </td>
-                  <td>{{ request.requestDate | date: 'dd/MM/yyyy' : 'UTC' }}</td>
+                  <td>
+                    {{ request.supplier?.name ?? 'Fornecedor a definir' }}
+                    @if (request.sectorName) {
+                      <div class="cell-sub">Setor: {{ request.sectorName }}</div>
+                    }
+                    @if (request.totalAmount > 0) {
+                      <div class="cell-sub"><strong>{{ request.totalAmount | currency: 'BRL' }}</strong></div>
+                    }
+                  </td>
+                  <td>
+                    {{ request.requestDate | date: 'dd/MM/yyyy' : 'UTC' }}
+                    @if (request.expectedDeliveryDate) {
+                      <div class="cell-sub">Entrega: {{ request.expectedDeliveryDate | date: 'dd/MM/yyyy' : 'UTC' }}</div>
+                    }
+                  </td>
                   <td>
                     <span
                       class="badge"
@@ -282,27 +374,35 @@
                   </td>
                   <td>{{ request.requesterName }}</td>
                   <td>
-                    @if (request.status === 'Open') {
-                      <div class="table-actions">
-                        <button
-                          class="btn btn-primary btn-sm"
-                          type="button"
-                          [disabled]="actionFor() === request.id"
-                          (click)="openReceive(request)"
-                        >
-                          Receber
+                    <div class="table-actions">
+                      <button class="icon-btn" type="button" title="Gerar PDF da ordem de compra" aria-label="Gerar PDF da ordem de compra" (click)="downloadPdf(request)">
+                        <app-icon name="printer" [size]="16" />
+                      </button>
+                      @if (canEdit(request)) {
+                        <button class="icon-btn" type="button" title="Editar SC" aria-label="Editar SC" (click)="openEdit(request)">
+                          <app-icon name="edit" [size]="16" />
                         </button>
-                        <button
-                          class="icon-btn"
-                          type="button"
-                          title="Cancelar itens pendentes"
-                          [disabled]="actionFor() === request.id"
-                          (click)="cancelRequest(request)"
-                        >
-                          <app-icon name="delete" [size]="16" />
-                        </button>
-                      </div>
-                    }
+                      }
+                      @if (request.status === 'Open') {
+                          <button
+                            class="btn btn-primary btn-sm"
+                            type="button"
+                            [disabled]="actionFor() === request.id"
+                            (click)="openReceive(request)"
+                          >
+                            Receber
+                          </button>
+                          <button
+                            class="icon-btn"
+                            type="button"
+                            title="Cancelar itens pendentes"
+                            [disabled]="actionFor() === request.id"
+                            (click)="cancelRequest(request)"
+                          >
+                            <app-icon name="delete" [size]="16" />
+                          </button>
+                      }
+                    </div>
                   </td>
                 </tr>
               }

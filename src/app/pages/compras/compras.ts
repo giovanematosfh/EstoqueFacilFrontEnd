@@ -1,14 +1,19 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Subject, debounceTime, distinctUntilChanged, startWith } from 'rxjs';
+import { AuthService } from '../../core/services/auth';
 import { BranchService } from '../../core/services/branch.service';
 import { ProductStockService } from '../../core/services/product-stock.service';
 import { PurchaseRequestService } from '../../core/services/purchase-request.service';
+import { SectorService } from '../../core/services/sector.service';
+import { SupplierService } from '../../core/services/supplier.service';
 import { Branch } from '../../core/models/branch.model';
 import { ProductStock } from '../../core/models/product-stock.model';
+import { Sector } from '../../core/models/sector.model';
+import { Supplier } from '../../core/models/supplier.model';
 import {
   PurchaseRequest,
   PurchaseRequestLine,
@@ -16,9 +21,12 @@ import {
   PurchaseRequestStatusName,
 } from '../../core/models/purchase-request.model';
 import { ReportColumn, exportToExcel } from '../../core/utils/export.util';
+import { downloadPurchaseOrderPdf } from '../../core/utils/purchase-order-pdf';
 import { EmptyState } from '../../shared/empty-state/empty-state';
 import { Icon } from '../../shared/icon/icon';
+import { Modal } from '../../shared/modal/modal';
 import { Pagination } from '../../shared/pagination/pagination';
+import { SectorFormModal } from '../../shared/sector-form-modal/sector-form-modal';
 
 const PAGE_SIZE = 10;
 
@@ -44,6 +52,7 @@ type ComprasTab = 'history' | 'monthly';
 type ItemForm = FormGroup<{
   productId: FormControl<number | null>;
   quantity: FormControl<number>;
+  unitPrice: FormControl<number | null>;
 }>;
 
 type ReceiveItemForm = FormGroup<{
@@ -76,7 +85,7 @@ function today(): string {
 
 @Component({
   selector: 'app-compras',
-  imports: [ReactiveFormsModule, FormsModule, DatePipe, EmptyState, Icon, Pagination],
+  imports: [ReactiveFormsModule, FormsModule, DatePipe, CurrencyPipe, EmptyState, Icon, Pagination, Modal, SectorFormModal],
   templateUrl: './compras.html',
 })
 export class Compras implements OnInit {
@@ -85,6 +94,9 @@ export class Compras implements OnInit {
   private readonly branchService = inject(BranchService);
   private readonly productStockService = inject(ProductStockService);
   private readonly purchaseRequestService = inject(PurchaseRequestService);
+  private readonly supplierService = inject(SupplierService);
+  private readonly sectorService = inject(SectorService);
+  private readonly auth = inject(AuthService);
   private readonly searchInput$ = new Subject<string>();
 
   protected readonly PurchaseRequestStatus = PurchaseRequestStatus;
@@ -111,6 +123,11 @@ export class Compras implements OnInit {
   protected readonly monthlyRows = computed(() => this.buildMonthlyRows(this.yearRequests()));
 
   protected readonly showForm = signal(false);
+  // SC em edição; null = nova SC.
+  protected readonly editingId = signal<number | null>(null);
+  protected readonly suppliers = signal<Supplier[]>([]);
+  protected readonly sectors = signal<Sector[]>([]);
+  protected readonly showSectorModal = signal(false);
   protected readonly saving = signal(false);
   protected readonly formError = signal('');
 
@@ -121,6 +138,10 @@ export class Compras implements OnInit {
   protected readonly form = this.fb.nonNullable.group({
     number: ['', [Validators.required, Validators.maxLength(50)]],
     requestDate: [today(), Validators.required],
+    expectedDeliveryDate: [''],
+    supplierId: this.fb.control<number | null>(null),
+    sectorId: this.fb.control<number | null>(null),
+    paymentTerms: ['', Validators.maxLength(200)],
     requesterName: [''],
     notes: [''],
     items: this.fb.array<ItemForm>([]),
@@ -139,6 +160,15 @@ export class Compras implements OnInit {
   protected readonly selectedProductIds = computed(
     () => new Set(this.itemsValue().map((item) => item.productId).filter((id): id is number => !!id)),
   );
+  // Total da ordem: soma de quantidade x preço dos itens com preço informado.
+  protected readonly orderTotal = computed(() =>
+    this.itemsValue().reduce((sum, item) => sum + (item.unitPrice != null ? (item.quantity ?? 0) * item.unitPrice : 0), 0),
+  );
+  protected readonly selectedSupplier = computed(() => {
+    const id = this.supplierIdValue();
+    return this.suppliers().find((s) => s.id === id) ?? null;
+  });
+  private readonly supplierIdValue = toSignal(this.form.controls.supplierId.valueChanges, { initialValue: null });
   protected readonly lowStockToAdd = computed(() =>
     this.branchProductStocks().filter((ps) => ps.lowStock && !this.selectedProductIds().has(ps.productId)),
   );
@@ -155,6 +185,7 @@ export class Compras implements OnInit {
 
   ngOnInit(): void {
     this.loadBranches();
+    this.loadSuppliersAndSectors();
   }
 
   protected get itemForms(): FormArray<ItemForm> {
@@ -216,20 +247,72 @@ export class Compras implements OnInit {
   protected openForm(productId: number | null = null, quantity: number | null = null): void {
     this.formError.set('');
     this.receiving.set(null);
-    this.form.reset({ number: '', requestDate: today(), requesterName: '', notes: '' });
+    this.editingId.set(null);
+    this.form.reset({
+      number: '',
+      requestDate: today(),
+      expectedDeliveryDate: '',
+      supplierId: null,
+      sectorId: null,
+      paymentTerms: '',
+      requesterName: this.auth.currentUser()?.name ?? '',
+      notes: '',
+    });
     this.itemForms.clear();
     this.addItem(productId, quantity);
     this.showForm.set(true);
+  }
+
+  // Edição só enquanto nenhum item foi recebido ou cancelado.
+  protected canEdit(request: PurchaseRequest): boolean {
+    return request.status === 'Open' && request.items.every((item) => item.status === 'Open');
+  }
+
+  protected openEdit(request: PurchaseRequest): void {
+    this.formError.set('');
+    this.receiving.set(null);
+    this.editingId.set(request.id);
+    this.form.reset({
+      number: request.number,
+      requestDate: request.requestDate.substring(0, 10),
+      expectedDeliveryDate: request.expectedDeliveryDate?.substring(0, 10) ?? '',
+      supplierId: request.supplier?.id ?? null,
+      sectorId: request.sectorId ?? null,
+      paymentTerms: request.paymentTerms ?? '',
+      requesterName: request.requesterName ?? '',
+      notes: request.notes ?? '',
+    });
+    this.itemForms.clear();
+    for (const item of request.items) {
+      this.addItem(item.productId, item.quantity, item.unitPrice ?? null);
+    }
+    this.showForm.set(true);
+  }
+
+  protected onSectorCreated(sector: Sector): void {
+    this.sectors.update((list) => [...list, sector].sort((a, b) => a.name.localeCompare(b.name)));
+    this.form.controls.sectorId.setValue(sector.id);
+    this.showSectorModal.set(false);
+  }
+
+  protected itemTotal(index: number): number | null {
+    const { quantity, unitPrice } = this.itemForms.at(index).getRawValue();
+    return unitPrice != null ? (quantity ?? 0) * unitPrice : null;
+  }
+
+  protected downloadPdf(request: PurchaseRequest): void {
+    downloadPurchaseOrderPdf(request, this.auth.currentUser()?.companyName ?? '');
   }
 
   protected closeForm(): void {
     this.showForm.set(false);
   }
 
-  protected addItem(productId: number | null = null, quantity: number | null = null): void {
+  protected addItem(productId: number | null = null, quantity: number | null = null, unitPrice: number | null = null): void {
     const group: ItemForm = this.fb.group({
       productId: this.fb.control<number | null>(productId, Validators.required),
       quantity: this.fb.nonNullable.control(quantity ?? this.suggestedQuantity(productId), [Validators.required, Validators.min(1)]),
+      unitPrice: this.fb.control<number | null>(unitPrice, Validators.min(0)),
     });
 
     // Ao escolher o produto, sugere a quantidade que falta para chegar no mínimo.
@@ -281,16 +364,27 @@ export class Compras implements OnInit {
     this.formError.set('');
 
     const raw = this.form.getRawValue();
+    const dto = {
+      branchId,
+      number: raw.number.trim(),
+      requestDate: raw.requestDate,
+      expectedDeliveryDate: raw.expectedDeliveryDate || null,
+      supplierId: raw.supplierId,
+      sectorId: raw.sectorId,
+      paymentTerms: raw.paymentTerms || null,
+      requesterName: raw.requesterName || null,
+      notes: raw.notes || null,
+      items: raw.items.map((item) => ({
+        productId: item.productId!,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice === null || (item.unitPrice as unknown) === '' ? null : Number(item.unitPrice),
+      })),
+    };
 
-    this.purchaseRequestService
-      .create({
-        branchId,
-        number: raw.number.trim(),
-        requestDate: raw.requestDate,
-        requesterName: raw.requesterName || null,
-        notes: raw.notes || null,
-        items: raw.items.map((item) => ({ productId: item.productId!, quantity: item.quantity })),
-      })
+    const editingId = this.editingId();
+    const request = editingId ? this.purchaseRequestService.update(editingId, dto) : this.purchaseRequestService.create(dto);
+
+    request
       .subscribe({
         next: () => {
           this.saving.set(false);
@@ -472,6 +566,11 @@ export class Compras implements OnInit {
     }
 
     return [...rows.values()].sort((a, b) => a.productName.localeCompare(b.productName));
+  }
+
+  private loadSuppliersAndSectors(): void {
+    this.supplierService.getAll('', 1, 100).subscribe({ next: (result) => this.suppliers.set(result.items) });
+    this.sectorService.getAll('', 1, 100).subscribe({ next: (result) => this.sectors.set(result.items) });
   }
 
   private loadBranches(): void {

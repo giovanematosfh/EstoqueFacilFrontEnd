@@ -55,6 +55,11 @@ export const routes: Routes = [
         title: 'Fornecedores',
       },
       {
+        path: 'setores',
+        loadComponent: () => import('./pages/setores/setores').then((m) => m.Setores),
+        title: 'Setores',
+      },
+      {
         path: 'relatorios',
         loadComponent: () => import('./pages/relatorios/relatorios').then((m) => m.Relatorios),
         title: 'Relatórios',

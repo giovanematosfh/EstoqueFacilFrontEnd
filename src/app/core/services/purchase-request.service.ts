@@ -46,6 +46,10 @@ export class PurchaseRequestService {
     return this.http.post<PurchaseRequest>(this.baseUrl, dto);
   }
 
+  update(id: number, dto: CreatePurchaseRequest): Observable<PurchaseRequest> {
+    return this.http.put<PurchaseRequest>(`${this.baseUrl}/${id}`, dto);
+  }
+
   receive(id: number, dto: ReceivePurchaseRequest): Observable<PurchaseRequest> {
     return this.http.post<PurchaseRequest>(`${this.baseUrl}/${id}/receive`, dto);
   }

@@ -7,13 +7,59 @@
   </div>
 
   <nav class="sidebar-nav">
-    @for (item of menuItems; track item.route) {
-      <a class="nav-item" [routerLink]="item.route" routerLinkActive="active" (click)="navigate.emit()">
-        <app-icon [name]="item.icon" [size]="20" />
-        @if (!collapsed()) {
-          <span class="nav-label">{{ item.label }}</span>
+    @for (entry of menu; track entry.label) {
+      @if (isGroup(entry)) {
+        @let group = asGroup(entry);
+        @if (collapsed()) {
+          <!-- Menu recolhido: os itens do grupo aparecem como ícones, separados por uma linha. -->
+          <span class="nav-divider"></span>
+          @for (child of group.children; track child.route) {
+            <a class="nav-item" [routerLink]="child.route" routerLinkActive="active" [title]="child.label" (click)="navigate.emit()">
+              <app-icon [name]="child.icon" [size]="20" />
+            </a>
+          }
+          <span class="nav-divider"></span>
+        } @else {
+          <button
+            class="nav-item nav-group"
+            type="button"
+            [class.has-active]="activeGroupId() === group.id"
+            [attr.aria-expanded]="isOpen(group)"
+            [attr.aria-controls]="'nav-group-' + group.id"
+            (click)="toggle(group)"
+          >
+            <app-icon [name]="group.icon" [size]="20" />
+            <span class="nav-label">{{ group.label }}</span>
+            <span class="nav-chevron" [class.open]="isOpen(group)">
+              <app-icon name="chevron-down" [size]="16" />
+            </span>
+          </button>
+          <div class="nav-children" [id]="'nav-group-' + group.id" [class.open]="isOpen(group)">
+            <div class="nav-children-inner">
+              @for (child of group.children; track child.route) {
+                <a
+                  class="nav-item nav-child"
+                  [routerLink]="child.route"
+                  routerLinkActive="active"
+                  [attr.tabindex]="isOpen(group) ? null : -1"
+                  (click)="navigate.emit()"
+                >
+                  <app-icon [name]="child.icon" [size]="18" />
+                  <span class="nav-label">{{ child.label }}</span>
+                </a>
+              }
+            </div>
+          </div>
         }
-      </a>
+      } @else {
+        @let item = asItem(entry);
+        <a class="nav-item" [routerLink]="item.route" routerLinkActive="active" [title]="collapsed() ? item.label : ''" (click)="navigate.emit()">
+          <app-icon [name]="item.icon" [size]="20" />
+          @if (!collapsed()) {
+            <span class="nav-label">{{ item.label }}</span>
+          }
+        </a>
+      }
     }
 
     @if (isSuperAdmin()) {
@@ -23,7 +69,7 @@
         <span class="nav-divider"></span>
       }
       @for (item of platformItems; track item.route) {
-        <a class="nav-item" [routerLink]="item.route" routerLinkActive="active" (click)="navigate.emit()">
+        <a class="nav-item" [routerLink]="item.route" routerLinkActive="active" [title]="collapsed() ? item.label : ''" (click)="navigate.emit()">
           <app-icon [name]="item.icon" [size]="20" />
           @if (!collapsed()) {
             <span class="nav-label">{{ item.label }}</span>

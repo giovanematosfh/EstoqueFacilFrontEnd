@@ -1414,3 +1414,213 @@ button {
     gap: 8px;
   }
 }
+
+/* Modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px;
+  background: rgba(15, 23, 42, 0.55);
+  overflow-y: auto;
+  animation: viewer-fade 0.15s ease-out;
+}
+
+.modal-dialog {
+  width: 100%;
+  max-width: 640px;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.3);
+  display: flex;
+  flex-direction: column;
+  animation: modal-in 0.18s ease-out;
+}
+
+.modal-dialog.modal-sm {
+  max-width: 440px;
+}
+
+.modal-dialog.modal-lg {
+  max-width: 1040px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.modal-header p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.modal-close {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.modal-body {
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.modal-footer:empty {
+  display: none;
+}
+
+.modal-section-title {
+  margin: 0 0 -4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 600px) {
+  .modal-backdrop {
+    padding: 0;
+  }
+
+  .modal-dialog,
+  .modal-dialog.modal-lg,
+  .modal-dialog.modal-sm {
+    max-width: none;
+    min-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .modal-footer {
+    border-radius: 0;
+    position: sticky;
+    bottom: 0;
+  }
+}
+
+/* Campo com botão ao lado (ex.: setor + "Novo") */
+.field-with-action {
+  display: flex;
+  gap: 8px;
+}
+
+.field-with-action select {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Ordem de compra: itens */
+.po-items-table input,
+.po-items-table select {
+  width: 100%;
+}
+
+.po-items-table td {
+  vertical-align: top;
+}
+
+.po-items-table .po-col-qty {
+  width: 110px;
+}
+
+.po-items-table .po-col-price {
+  width: 140px;
+}
+
+.po-items-table .po-col-total {
+  width: 120px;
+  text-align: right;
+  white-space: nowrap;
+  padding-top: 18px;
+}
+
+.po-items-table .po-col-action {
+  width: 44px;
+}
+
+.po-total-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 15px;
+}
+
+.po-total-row strong {
+  font-size: 20px;
+  color: var(--color-text);
+}
+
+.supplier-card {
+  padding: 10px 12px;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 760px) {
+  .po-items-table thead {
+    display: none;
+  }
+
+  .po-items-table tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr 44px;
+    gap: 8px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .po-items-table td {
+    padding: 0;
+    border: none;
+  }
+
+  .po-items-table td.po-col-product {
+    grid-column: 1 / -1;
+  }
+
+  .po-items-table .po-col-qty,
+  .po-items-table .po-col-price,
+  .po-items-table .po-col-total {
+    width: auto;
+  }
+
+  .po-items-table .po-col-total {
+    grid-column: 1 / -1;
+    text-align: left;
+    padding-top: 0;
+  }
+}
