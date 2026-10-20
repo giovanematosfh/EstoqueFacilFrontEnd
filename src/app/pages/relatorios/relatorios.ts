@@ -8,7 +8,7 @@ import { PurchaseRequestService } from '../../core/services/purchase-request.ser
 import { StockMovementService } from '../../core/services/stock-movement.service';
 import { Branch } from '../../core/models/branch.model';
 import { ProductStock } from '../../core/models/product-stock.model';
-import { PurchaseRequest } from '../../core/models/purchase-request.model';
+import { PurchaseRequestLine } from '../../core/models/purchase-request.model';
 import { StockMovement } from '../../core/models/stock-movement.model';
 import { EmptyState } from '../../shared/empty-state/empty-state';
 import { Icon } from '../../shared/icon/icon';
@@ -64,7 +64,7 @@ interface SummaryRow {
   openRequest: string;
 }
 
-const STATUS_LABELS: Record<PurchaseRequest['status'], string> = {
+const STATUS_LABELS: Record<PurchaseRequestLine['status'], string> = {
   Open: 'Aberta',
   Received: 'Recebida',
   Canceled: 'Cancelada',
@@ -103,13 +103,13 @@ const MOVEMENT_COLUMNS: ReportColumn<StockMovement>[] = [
   { header: 'Data', key: 'movementDate', format: (v) => formatDateTime(v as string) },
 ];
 
-const PURCHASE_COLUMNS: ReportColumn<PurchaseRequest>[] = [
+const PURCHASE_COLUMNS: ReportColumn<PurchaseRequestLine>[] = [
   { header: 'Nº SC', key: 'number' },
   { header: 'Produto', key: 'productName' },
   { header: 'Filial', key: 'branchName' },
   { header: 'Quantidade', key: 'quantity' },
   { header: 'Data da SC', key: 'requestDate', format: (v) => formatDate(v as string) },
-  { header: 'Status', key: 'status', format: (v) => STATUS_LABELS[v as PurchaseRequest['status']] },
+  { header: 'Status', key: 'status', format: (v) => STATUS_LABELS[v as PurchaseRequestLine['status']] },
   { header: 'Recebida em', key: 'receivedDate', format: (v) => formatDate(v as string) },
   { header: 'Qtd recebida', key: 'receivedQuantity' },
   { header: 'Solicitante', key: 'requesterName' },
@@ -180,7 +180,7 @@ export class Relatorios implements OnInit {
 
   protected readonly inventoryItems = signal<ProductStock[]>([]);
   protected readonly movements = signal<StockMovement[]>([]);
-  protected readonly purchaseRequests = signal<PurchaseRequest[]>([]);
+  protected readonly purchaseRequests = signal<PurchaseRequestLine[]>([]);
 
   protected readonly lowStockItems = computed(() => this.inventoryItems().filter((item) => item.lowStock));
   protected readonly summaryRows = computed(() => this.buildSummary(this.inventoryItems(), this.movements()));
@@ -190,7 +190,8 @@ export class Relatorios implements OnInit {
       inbound: rows.reduce((sum, row) => sum + row.inbound, 0),
       outbound: rows.reduce((sum, row) => sum + row.outbound, 0),
       lowStock: rows.filter((row) => row.lowStock).length,
-      openRequests: this.purchaseRequests().filter((pr) => pr.status === 'Open').length,
+      // SCs distintas com item pendente (cada linha é um item).
+      openRequests: new Set(this.purchaseRequests().filter((pr) => pr.status === 'Open').map((pr) => pr.purchaseRequestId)).size,
     };
   });
 
@@ -426,7 +427,7 @@ export class Relatorios implements OnInit {
   private buildControl(
     inventory: ProductStock[],
     movements: StockMovement[],
-    purchases: PurchaseRequest[],
+    purchases: PurchaseRequestLine[],
     months: ReportMonth[],
   ): ControlRow[] {
     const monthIndex = new Map(months.map((m, i) => [m.key, i]));
