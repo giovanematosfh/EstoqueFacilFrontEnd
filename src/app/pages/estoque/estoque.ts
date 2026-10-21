@@ -1,18 +1,22 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { BranchService } from '../../core/services/branch.service';
 import { ProductStockService } from '../../core/services/product-stock.service';
 import { StockMovementService } from '../../core/services/stock-movement.service';
+import { SectorService } from '../../core/services/sector.service';
 import { Branch } from '../../core/models/branch.model';
 import { ProductStock, UpdateProductStock } from '../../core/models/product-stock.model';
 import { MovementType, StockMovement } from '../../core/models/stock-movement.model';
+import { Sector } from '../../core/models/sector.model';
 import { EmptyState } from '../../shared/empty-state/empty-state';
 import { Icon } from '../../shared/icon/icon';
 import { Pagination } from '../../shared/pagination/pagination';
+import { Modal } from '../../shared/modal/modal';
+import { SectorFormModal } from '../../shared/sector-form-modal/sector-form-modal';
 
 const PAGE_SIZE = 10;
 
@@ -20,7 +24,7 @@ type EstoqueTab = 'movements' | 'levels';
 
 @Component({
   selector: 'app-estoque',
-  imports: [ReactiveFormsModule, FormsModule, DatePipe, RouterLink, EmptyState, Icon, Pagination],
+  imports: [ReactiveFormsModule, FormsModule, DatePipe, RouterLink, EmptyState, Icon, Pagination, Modal, SectorFormModal],
   templateUrl: './estoque.html',
 })
 export class Estoque implements OnInit {
@@ -28,6 +32,7 @@ export class Estoque implements OnInit {
   private readonly branchService = inject(BranchService);
   private readonly productStockService = inject(ProductStockService);
   private readonly stockMovementService = inject(StockMovementService);
+  private readonly sectorService = inject(SectorService);
   private readonly movementSearchInput$ = new Subject<string>();
   private readonly levelSearchInput$ = new Subject<string>();
 
@@ -56,14 +61,44 @@ export class Estoque implements OnInit {
   protected readonly saving = signal(false);
   protected readonly showForm = signal(false);
   protected readonly formError = signal('');
+  protected readonly sectors = signal<Sector[]>([]);
+  protected readonly showSectorModal = signal(false);
 
   protected readonly form = this.fb.nonNullable.group({
     productId: this.fb.control<number | null>(null, Validators.required),
     type: [MovementType.Inbound, Validators.required],
     quantity: [1, [Validators.required, Validators.min(1)]],
-    reason: [''],
-    requesterName: [''],
-    sector: [''],
+    reason: ['', Validators.maxLength(300)],
+    requesterName: ['', Validators.maxLength(150)],
+    sectorId: this.fb.control<number | null>(null),
+  });
+
+  private readonly formValue = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
+
+  protected readonly selectedBranchName = computed(
+    () => this.branches().find((b) => b.id === this.selectedBranchId())?.name ?? '',
+  );
+
+  protected readonly selectedProductStock = computed(() => {
+    const productId = this.formValue().productId;
+    return this.branchProductStocks().find((ps) => ps.productId === productId) ?? null;
+  });
+
+  protected readonly isOutbound = computed(() => this.formValue().type === MovementType.Outbound);
+
+  // Saldo previsto do produto depois de registrar a movimentação.
+  protected readonly projectedBalance = computed(() => {
+    const stock = this.selectedProductStock();
+    if (!stock) {
+      return null;
+    }
+    const quantity = Number(this.formValue().quantity) || 0;
+    return this.isOutbound() ? stock.quantity - quantity : stock.quantity + quantity;
+  });
+
+  protected readonly exceedsStock = computed(() => {
+    const balance = this.projectedBalance();
+    return this.isOutbound() && balance !== null && balance < 0;
   });
 
   constructor() {
@@ -103,18 +138,40 @@ export class Estoque implements OnInit {
     this.loadBranchProductStocks();
   }
 
-  protected openForm(): void {
+  protected openForm(productId: number | null = null, type = MovementType.Inbound): void {
     this.formError.set('');
     this.form.reset({
-      productId: null,
-      type: MovementType.Inbound,
+      productId,
+      type,
       quantity: 1,
       reason: '',
       requesterName: '',
-      sector: '',
+      sectorId: null,
     });
     this.loadBranchProductStocks();
+    this.loadSectors();
     this.showForm.set(true);
+    setTimeout(() => document.getElementById(productId ? 'quantity' : 'productId')?.focus());
+  }
+
+  protected setType(type: MovementType): void {
+    this.form.controls.type.setValue(type);
+  }
+
+  // Ao escolher o setor, sugere o responsável como solicitante se o campo estiver vazio.
+  protected onSectorChange(sectorId: number | null): void {
+    const sector = this.sectors().find((s) => s.id === sectorId);
+    const requester = this.form.controls.requesterName;
+    if (sector?.responsibleName && !requester.value.trim()) {
+      requester.setValue(sector.responsibleName);
+    }
+  }
+
+  protected onSectorCreated(sector: Sector): void {
+    this.sectors.update((list) => [...list, sector].sort((a, b) => a.name.localeCompare(b.name)));
+    this.form.controls.sectorId.setValue(sector.id);
+    this.onSectorChange(sector.id);
+    this.showSectorModal.set(false);
   }
 
   protected closeForm(): void {
@@ -140,7 +197,7 @@ export class Estoque implements OnInit {
   }
 
   protected submitForm(): void {
-    if (this.form.invalid) {
+    if (this.form.invalid || this.exceedsStock()) {
       this.form.markAllAsTouched();
       return;
     }
@@ -154,6 +211,7 @@ export class Estoque implements OnInit {
     this.formError.set('');
 
     const raw = this.form.getRawValue();
+    const sectorName = this.sectors().find((s) => s.id === raw.sectorId)?.name ?? null;
 
     this.stockMovementService
       .register({
@@ -161,9 +219,9 @@ export class Estoque implements OnInit {
         branchId,
         type: raw.type,
         quantity: raw.quantity,
-        reason: raw.reason || null,
-        requesterName: raw.requesterName || null,
-        sector: raw.sector || null,
+        reason: raw.reason.trim() || null,
+        requesterName: raw.requesterName.trim() || null,
+        sector: sectorName,
       })
       .subscribe({
         next: () => {
@@ -171,6 +229,7 @@ export class Estoque implements OnInit {
           this.showForm.set(false);
           this.loadMovements();
           this.loadLevels();
+          this.loadBranchProductStocks();
         },
         error: (err) => {
           this.saving.set(false);
@@ -274,6 +333,12 @@ export class Estoque implements OnInit {
         },
         error: () => this.levelsLoading.set(false),
       });
+  }
+
+  private loadSectors(): void {
+    this.sectorService.getAll('', 1, 100).subscribe({
+      next: (result) => this.sectors.set([...result.items].sort((a, b) => a.name.localeCompare(b.name))),
+    });
   }
 
   private loadBranchProductStocks(): void {

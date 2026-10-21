@@ -32,16 +32,50 @@
     />
   } @else {
     @if (showForm()) {
-      <div class="card form-card">
-        <h2>Registrar Movimentação</h2>
-        <form [formGroup]="form" (ngSubmit)="submitForm()">
-          <div class="form-grid">
-            <div class="field">
+      <app-modal
+        title="Registrar movimentação"
+        [subtitle]="'Filial ' + selectedBranchName() + ' · lance uma entrada ou saída de estoque.'"
+        (closed)="closeForm()"
+      >
+        <form id="movementForm" class="movement-form" [formGroup]="form" (ngSubmit)="submitForm()">
+          <div class="movement-type-toggle" role="radiogroup" aria-label="Tipo de movimentação">
+            <button
+              type="button"
+              role="radio"
+              class="movement-type movement-type-in"
+              [class.active]="!isOutbound()"
+              [attr.aria-checked]="!isOutbound()"
+              (click)="setType(MovementType.Inbound)"
+            >
+              <span class="movement-type-symbol">+</span>
+              <span>
+                <strong>Entrada</strong>
+                <small>Adiciona ao estoque</small>
+              </span>
+            </button>
+            <button
+              type="button"
+              role="radio"
+              class="movement-type movement-type-out"
+              [class.active]="isOutbound()"
+              [attr.aria-checked]="isOutbound()"
+              (click)="setType(MovementType.Outbound)"
+            >
+              <span class="movement-type-symbol">−</span>
+              <span>
+                <strong>Saída</strong>
+                <small>Retira do estoque</small>
+              </span>
+            </button>
+          </div>
+
+          <div class="form-grid movement-grid">
+            <div class="field movement-product">
               <label for="productId">Produto</label>
               <select id="productId" formControlName="productId">
                 <option [ngValue]="null" disabled>Selecione um produto</option>
                 @for (ps of branchProductStocks(); track ps.productId) {
-                  <option [ngValue]="ps.productId">{{ ps.productName }} (estoque: {{ ps.quantity }})</option>
+                  <option [ngValue]="ps.productId">{{ ps.productName }}{{ ps.sku ? ' · ' + ps.sku : '' }}</option>
                 }
               </select>
               @if (form.controls.productId.invalid && form.controls.productId.touched) {
@@ -50,49 +84,100 @@
             </div>
 
             <div class="field">
-              <label for="type">Tipo</label>
-              <select id="type" formControlName="type">
-                <option [ngValue]="MovementType.Inbound">Entrada</option>
-                <option [ngValue]="MovementType.Outbound">Saída</option>
-              </select>
-            </div>
-
-            <div class="field">
               <label for="quantity">Quantidade</label>
-              <input id="quantity" type="number" min="1" formControlName="quantity" />
+              <input
+                id="quantity"
+                type="number"
+                min="1"
+                formControlName="quantity"
+                [class.invalid]="exceedsStock() || (form.controls.quantity.invalid && form.controls.quantity.touched)"
+              />
               @if (form.controls.quantity.invalid && form.controls.quantity.touched) {
                 <span class="field-error">Informe uma quantidade válida.</span>
               }
             </div>
+          </div>
+
+          @if (selectedProductStock(); as stock) {
+            <div class="movement-summary" [class.movement-summary-error]="exceedsStock()">
+              <div>
+                <span>Estoque atual</span>
+                <strong>{{ stock.quantity }}</strong>
+              </div>
+              <div class="movement-summary-arrow">→</div>
+              <div>
+                <span>Saldo após {{ isOutbound() ? 'saída' : 'entrada' }}</span>
+                <strong>{{ projectedBalance() }}</strong>
+              </div>
+              <div class="movement-summary-note">
+                @if (exceedsStock()) {
+                  Quantidade maior que o estoque disponível.
+                } @else if (projectedBalance()! < stock.minimumQuantity) {
+                  <span class="badge badge-warn">abaixo do mínimo ({{ stock.minimumQuantity }})</span>
+                } @else {
+                  <span class="badge badge-in">ok</span>
+                }
+              </div>
+            </div>
+          }
+
+          <p class="modal-section-title">Quem solicitou</p>
+          <div class="form-grid">
+            <div class="field">
+              <label for="sectorId">Setor</label>
+              <div class="field-with-action">
+                <select id="sectorId" formControlName="sectorId" (ngModelChange)="onSectorChange($event)">
+                  <option [ngValue]="null">Sem setor</option>
+                  @for (sector of sectors(); track sector.id) {
+                    <option [ngValue]="sector.id" [disabled]="!sector.active">{{ sector.name }}</option>
+                  }
+                </select>
+                <button class="btn btn-secondary btn-sm" type="button" (click)="showSectorModal.set(true)" title="Cadastrar setor">
+                  <app-icon name="plus" [size]="14" />
+                  Novo
+                </button>
+              </div>
+            </div>
 
             <div class="field">
               <label for="requesterName">Solicitante</label>
-              <input id="requesterName" type="text" formControlName="requesterName" placeholder="Nome de quem solicitou" />
-            </div>
-
-            <div class="field">
-              <label for="sector">Setor</label>
-              <input id="sector" type="text" formControlName="sector" placeholder="Opcional" />
+              <input id="requesterName" type="text" maxlength="150" formControlName="requesterName" placeholder="Nome de quem solicitou" />
             </div>
 
             <div class="field full-width">
-              <label for="reason">Motivo</label>
-              <input id="reason" type="text" formControlName="reason" placeholder="Opcional" />
+              <label for="reason">Motivo / observação</label>
+              <textarea
+                id="reason"
+                rows="2"
+                maxlength="300"
+                formControlName="reason"
+                [placeholder]="isOutbound() ? 'Ex.: troca de equipamento na sala 3' : 'Ex.: recebimento da NF 1234'"
+              ></textarea>
             </div>
           </div>
-
-          @if (formError()) {
-            <div class="alert-error">{{ formError() }}</div>
-          }
-
-          <div class="form-actions">
-            <button class="btn btn-secondary" type="button" (click)="closeForm()">Cancelar</button>
-            <button class="btn btn-primary" type="submit" [disabled]="saving()">
-              {{ saving() ? 'Registrando...' : 'Registrar' }}
-            </button>
-          </div>
         </form>
-      </div>
+
+        @if (formError()) {
+          <div class="alert-error">{{ formError() }}</div>
+        }
+
+        <ng-container modal-footer>
+          <button class="btn btn-secondary" type="button" (click)="closeForm()">Cancelar</button>
+          <button
+            class="btn btn-primary"
+            [class.btn-danger]="isOutbound()"
+            type="submit"
+            form="movementForm"
+            [disabled]="saving() || exceedsStock()"
+          >
+            {{ saving() ? 'Registrando...' : isOutbound() ? 'Registrar saída' : 'Registrar entrada' }}
+          </button>
+        </ng-container>
+      </app-modal>
+    }
+
+    @if (showSectorModal()) {
+      <app-sector-form-modal (saved)="onSectorCreated($event)" (closed)="showSectorModal.set(false)" />
     }
 
     <div class="report-tabs">
@@ -222,6 +307,7 @@
                 <th>Status</th>
                 <th>Qtd a solicitar</th>
                 <th>SC em aberto</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -266,6 +352,11 @@
                         Solicitar
                       </a>
                     }
+                  </td>
+                  <td>
+                    <button class="btn btn-secondary btn-sm" type="button" (click)="openForm(ps.productId)">
+                      Movimentar
+                    </button>
                   </td>
                 </tr>
               }
