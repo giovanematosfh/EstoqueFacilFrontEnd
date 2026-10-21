@@ -104,7 +104,11 @@ export function exportGridToPdf(
     head: head as any,
     body,
     startY: 26,
-    styles: { fontSize: 7, halign: 'center' },
+    // Muitas colunas (ex.: 12 meses de Utilizado + 12 de SC): fonte e espaçamento menores para caber na página.
+    styles: (body[0]?.length ?? 0) > 20
+      ? { fontSize: 5.5, cellPadding: 1, halign: 'center' }
+      : { fontSize: 7, halign: 'center' },
+    margin: { left: 8, right: 8 },
     headStyles: { fillColor: [31, 56, 100], halign: 'center', valign: 'middle' },
   });
 

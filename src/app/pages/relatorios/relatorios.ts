@@ -132,20 +132,26 @@ function formatMoney(value: number): string {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-// Meses entre duas datas yyyy-MM-dd (inclusive). Mostra o ano no rótulo quando o período cruza anos.
+// Meses entre duas datas yyyy-MM-dd (inclusive). Mostra o ano no rótulo quando o período cruza anos
+// e abrevia o nome (Jan, Fev...) quando são muitos meses, para a tabela caber na tela e no PDF.
 function monthsBetween(from: string, to: string): ReportMonth[] {
   let year = Number(from.substring(0, 4));
   let month = Number(from.substring(5, 7));
   const endYear = Number(to.substring(0, 4));
   const endMonth = Number(to.substring(5, 7));
   const showYear = year !== endYear;
+  const abbreviate = (endYear - year) * 12 + (endMonth - month) + 1 > 6;
 
   const months: ReportMonth[] = [];
   while ((year < endYear || (year === endYear && month <= endMonth)) && months.length < 24) {
     const name = MONTH_NAMES[month - 1];
     months.push({
       key: `${year}-${String(month).padStart(2, '0')}`,
-      label: showYear ? `${name.substring(0, 3)}/${String(year).substring(2)}` : name,
+      label: showYear
+        ? `${name.substring(0, 3)}/${String(year).substring(2)}`
+        : abbreviate
+          ? name.substring(0, 3)
+          : name,
     });
     month++;
     if (month > 12) {
@@ -203,10 +209,10 @@ export class Relatorios implements OnInit {
     };
   });
 
-  // Padrão: os últimos 5 meses, como na planilha de controle.
+  // Padrão: os 12 meses do ano atual (Janeiro a Dezembro); meses futuros ficam vazios.
   protected readonly dateForm = this.fb.nonNullable.group({
-    from: [isoDate(new Date(new Date().getFullYear(), new Date().getMonth() - 4, 1))],
-    to: [isoDate(new Date())],
+    from: [isoDate(new Date(new Date().getFullYear(), 0, 1))],
+    to: [isoDate(new Date(new Date().getFullYear(), 11, 31))],
   });
 
   // Meses do período gerado (fixados no Gerar, para a tabela não mudar enquanto edita as datas).
